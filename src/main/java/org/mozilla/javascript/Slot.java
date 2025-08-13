@@ -65,7 +65,7 @@ public class Slot implements Serializable {
             if (isThrow) {
                 throw ScriptRuntime.typeErrorById("msg.modify.readonly", name);
             }
-            return true;
+            throw ScriptRuntime.typeErrorById("msg.modify.readonly", name);
         }
         if (owner == start) {
             this.value = value;

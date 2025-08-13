@@ -2968,6 +2968,8 @@ public final class Interpreter extends Icode implements Evaluator {
             if ((varAttributes[indexReg] & ScriptableObject.READONLY) == 0) {
                 vars[indexReg] = stack[stackTop];
                 varDbls[indexReg] = sDbl[stackTop];
+            } else {
+                throw ScriptRuntime.typeErrorById("msg.modify.readonly", frame.idata.argNames[indexReg]);
             }
         } else {
             Object val = stack[stackTop];

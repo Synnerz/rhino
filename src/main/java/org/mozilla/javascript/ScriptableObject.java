@@ -96,6 +96,16 @@ public abstract class ScriptableObject
      */
     public static final int UNINITIALIZED_CONST = 0x08;
 
+    /**
+     * Property attribute indicating that this property is a const,
+     * and has already been initialized.
+     * <p>
+     * The READONLY and PERMANENT attributes do not suffice to describe a const
+     * variable, because properties such as Number.MAX_VALUE can be reassigned without
+     * error (although it does nothing) in non-strict mode, unlike consts.
+     */
+    public static final int INITIALIZED_CONST = 0x10;
+
     public static final int CONST = PERMANENT | READONLY | UNINITIALIZED_CONST;
     /** The prototype of this object. */
     private Scriptable prototypeObject;
@@ -2588,13 +2598,15 @@ public abstract class ScriptableObject
             // either const hoisted declaration or initialization
             slot = slotMap.modify(name, index, CONST);
             int attr = slot.getAttributes();
-//            if ((attr & READONLY) == 0)
-//                throw Context.reportRuntimeErrorById("msg.var.redecl", name);
             if ((attr & UNINITIALIZED_CONST) != 0) {
                 slot.value = value;
                 // clear the bit on const initialization
                 if (constFlag != UNINITIALIZED_CONST)
                     slot.setAttributes(attr & ~UNINITIALIZED_CONST);
+            } else if ((attr & (UNINITIALIZED_CONST | INITIALIZED_CONST)) == 0) {
+                // We are initializing a const slot in a ScriptRuntime.enterWith call
+                slot.value = value;
+                slot.setAttributes(attr | INITIALIZED_CONST);
             }
             return true;
         }

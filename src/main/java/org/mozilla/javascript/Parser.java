@@ -1816,12 +1816,12 @@ public class Parser {
 
             if (isForIn || isForOf) {
                 ForInLoop fis = new ForInLoop(forPos);
-                if (init instanceof VariableDeclaration) {
-                    // check that there was only one variable given
-                    if (((VariableDeclaration) init).getVariables().size() > 1) {
-                        reportError("msg.mult.index");
-                    }
-                }
+//                if (init instanceof VariableDeclaration) {
+//                    // check that there was only one variable given
+//                    if (((VariableDeclaration) init).getVariables().size() > 1) {
+//                        reportError("msg.mult.index");
+//                    }
+//                }
                 if (isForOf && isForEach) {
                     reportError("msg.invalid.for.each");
                 }
@@ -1870,13 +1870,23 @@ public class Parser {
     private AstNode forLoopInit(int tt) throws IOException {
         try {
             inForInit = true; // checked by variables() and relExpr()
-            AstNode init = null;
+            AstNode init;
             if (tt == Token.SEMI) {
                 init = new EmptyExpression(ts.tokenBeg, 1);
                 init.setLineno(ts.lineno);
-            } else if (tt == Token.VAR || tt == Token.LET) {
+            } else if (tt == Token.VAR || tt == Token.LET || tt == Token.CONST) {
                 consumeToken();
-                init = variables(tt, ts.tokenBeg, false);
+                VariableDeclaration decl = variables(tt, ts.tokenBeg, false);
+
+                if (decl.getVariables().size() != 1) {
+                    reportError("msg.for.in.multiple.decl");
+                }
+
+                if (inUseStrictDirective && decl.getVariables().get(0).getInitializer() != null) {
+                    reportError("msg.for.in.assignment.in.strict.mode");
+                }
+
+                init = decl;
             } else {
                 init = expr(false);
             }
@@ -2885,6 +2895,27 @@ public class Parser {
 
             markDestructuring(pn);
             int opPos = ts.tokenBeg;
+
+            if (pn instanceof Name) {
+                Name lhs = (Name) pn;
+                String name = lhs.getString();
+
+                if (name.equals("new.target")) {
+                    reportError("msg.bad.assign.left");
+                }
+
+                Scope definingScope = currentScope.getDefiningScope(name);
+
+                if (definingScope != null) {
+                    Symbol definedSymbol = definingScope.getSymbol(name);
+
+                    if (definedSymbol != null) {
+                        if (definedSymbol.getDeclType() == Token.CONST) {
+                            reportError("msg.const.inval.assign", name);
+                        }
+                    }
+                }
+            }
 
             pn = new Assignment(tt, pn, assignExpr(), opPos);
 
