@@ -85,5 +85,15 @@ public class ComplianceTest {
             return "Function";
         }
 
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
     }
 }

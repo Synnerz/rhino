@@ -87,6 +87,16 @@ public class Environment extends ScriptableObject
             System.getProperties().put(name, ScriptRuntime.toString(value));
     }
 
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
     private Object[] collectIds() {
         Map<Object,Object> props = System.getProperties();
         return props.keySet().toArray();

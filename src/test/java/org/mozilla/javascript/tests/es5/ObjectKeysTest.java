@@ -21,7 +21,7 @@ public class ObjectKeysTest {
     NativeObject object = new NativeObject();
     object.defineProperty("a", "1", ScriptableObject.EMPTY);
     object.defineProperty("b", "2", ScriptableObject.EMPTY);
-    object.defineProperty("c", "3", ScriptableObject.NOT_ENUMERABLE);
+    object.defineProperty("c", "3", ScriptableObject.DONTENUM);
 
     Object result = eval("Object.keys(obj)", "obj", object);
 

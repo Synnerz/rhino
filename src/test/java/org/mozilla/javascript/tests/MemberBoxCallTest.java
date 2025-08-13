@@ -103,6 +103,16 @@ public class MemberBoxCallTest {
             return "AnnotatedHostObject";
         }
 
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
         @JSConstructor
         public void jsConstructorMethod() {
             put("initialized", this, Boolean.TRUE);

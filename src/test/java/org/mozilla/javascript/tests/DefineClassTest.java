@@ -94,6 +94,16 @@ public class DefineClassTest {
             return "AnnotatedHostObject";
         }
 
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
         @JSConstructor
         public void jsConstructorMethod() {
             put("initialized", this, Boolean.TRUE);
@@ -148,6 +158,16 @@ public class DefineClassTest {
         @Override
         public String getClassName() {
             return "TraditionalHostObject";
+        }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
         }
 
         public void jsConstructor() {

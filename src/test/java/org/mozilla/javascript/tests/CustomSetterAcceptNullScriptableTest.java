@@ -30,6 +30,16 @@ public class CustomSetterAcceptNullScriptableTest extends TestCase
             return "Foo";
         }
 
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
         public void setMyProp(final Foo2 s) { }
     }
 
@@ -40,6 +50,16 @@ public class CustomSetterAcceptNullScriptableTest extends TestCase
         public String getClassName()
         {
             return "Foo2";
+        }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
         }
     }
 

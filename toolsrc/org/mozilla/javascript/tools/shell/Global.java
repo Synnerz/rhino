@@ -125,17 +125,17 @@ public class Global extends ImporterTopLevel
             "write"
         };
         defineFunctionProperties(names, Global.class,
-                                 ScriptableObject.NOT_ENUMERABLE);
+                                 ScriptableObject.DONTENUM);
 
         // Set up "environment" in the global scope to provide access to the
         // System environment variables.
         Environment.defineClass(this);
         Environment environment = new Environment(this);
         defineProperty("environment", environment,
-                       ScriptableObject.NOT_ENUMERABLE);
+                       ScriptableObject.DONTENUM);
 
         history = (NativeArray) cx.newArray(this, 0);
-        defineProperty("history", history, ScriptableObject.NOT_ENUMERABLE);
+        defineProperty("history", history, ScriptableObject.DONTENUM);
 
         initialized = true;
     }

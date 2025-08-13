@@ -94,6 +94,16 @@ public class PrimitiveTypeScopeResolutionTest
         }
 
         @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
+        @Override
         public String toString()
         {
             return label_;
@@ -109,7 +119,17 @@ public class PrimitiveTypeScopeResolutionTest
           return "MyObject";
       }
 
-      public Object readPropFoo(final Scriptable s) {
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
+
+        public Object readPropFoo(final Scriptable s) {
           return ScriptableObject.getProperty(s, "foo");
       }
   }

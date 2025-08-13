@@ -6,6 +6,7 @@ package org.mozilla.javascript.tests;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
+import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 
 import junit.framework.TestCase;
@@ -22,6 +23,16 @@ public class AvoidObjectDetectionTest extends TestCase
         public String getClassName() {
             return "Foo";
         }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
     }
 
     public static class Avoid extends ScriptableObject {
@@ -36,6 +47,16 @@ public class AvoidObjectDetectionTest extends TestCase
         @Override
         public String getClassName() {
             return "Avoid";
+        }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
         }
     }
 

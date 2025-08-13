@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Test;
 import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 
 @SuppressWarnings("serial")
@@ -19,6 +20,16 @@ public class DefineClassMapInheritance {
         @Override
         public String getClassName() {
             return getClass().getSimpleName();
+        }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
         }
     }
 

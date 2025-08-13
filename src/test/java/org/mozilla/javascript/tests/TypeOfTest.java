@@ -42,6 +42,16 @@ public class TypeOfTest extends TestCase
         {
             return "Foo";
         }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
+        }
     }
 
     /**

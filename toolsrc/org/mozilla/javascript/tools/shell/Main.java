@@ -165,7 +165,7 @@ public class Main
         System.arraycopy(args, 0, array, 0, args.length);
         Scriptable argsObj = cx.newArray(global, array);
         global.defineProperty("arguments", argsObj,
-                              ScriptableObject.NOT_ENUMERABLE);
+                              ScriptableObject.DONTENUM);
 
         for (String file: fileList) {
             try {
@@ -493,7 +493,7 @@ public class Main
                                         source.trim().startsWith("function")))
                         {
                             try {
-                                console.println(ScriptRuntime.toStringPretty(result));
+//                                console.println(ScriptRuntime.toStringPretty(result));
                             } catch (RhinoException rex) {
                                 ToolErrorReporter.reportException(
                                         cx.getErrorReporter(), rex);

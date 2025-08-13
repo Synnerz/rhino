@@ -32,12 +32,12 @@ public class ScriptsRunner extends Main {
             super.onContextCreated(cx);
 
             cx.setLanguageVersion(Context.VERSION_ES6);
-            cx.setDebugOutputPath(new File(".", "DEBUG"));
+            // cx.setDebugOutputPath(new File(".", "DEBUG"));
         }
 
         @Override
         protected boolean hasFeature(Context cx, int featureIndex) {
-            if (featureIndex == Context.EMIT_DEBUG_OUTPUT || featureIndex == Context.FEATURE_LOCATION_INFORMATION_IN_ERROR) {
+            if (/*featureIndex == Context.EMIT_DEBUG_OUTPUT || */featureIndex == Context.FEATURE_LOCATION_INFORMATION_IN_ERROR) {
                 return true;
             }
 

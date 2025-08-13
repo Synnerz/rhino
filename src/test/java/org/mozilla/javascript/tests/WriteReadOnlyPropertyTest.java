@@ -8,10 +8,7 @@ import java.lang.reflect.Method;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.EcmaError;
-import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.*;
 
 /**
  * Test that read-only properties can be... set when needed.
@@ -84,6 +81,16 @@ public class WriteReadOnlyPropertyTest {
         public String getClassName()
         {
             return "Foo";
+        }
+
+        @Override
+        public void declare(String name, Scriptable start) {
+
+        }
+
+        @Override
+        public void declareConst(String name, Scriptable start) {
+
         }
 
         public String getMyProp()

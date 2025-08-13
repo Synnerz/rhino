@@ -161,6 +161,16 @@ public class NativeWrappedArrayTest {
     }
 
     @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
     public void put(String n, Scriptable start, Object val) {
       if ("length".equals(n)) {
         length = ScriptRuntime.toInt32(val);
