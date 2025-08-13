@@ -6,29 +6,30 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.ScriptRuntimeES6;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
- * An array view that stores 32-bit quantities and implements the JavaScript "Uint32Array" interface.
- * It also implements List&lt;Long&gt; for direct manipulation in Java.
+ * An array view that stores 32-bit quantities and implements the JavaScript "Uint32Array"
+ * interface. It also implements List&lt;Long&gt; for direct manipulation in Java.
  */
-
-public class NativeUint32Array
-        extends NativeTypedArrayView<Long> {
+public class NativeUint32Array extends NativeTypedArrayView<Long> {
     private static final long serialVersionUID = -7987831421954144244L;
 
     private static final String CLASS_NAME = "Uint32Array";
     private static final int BYTES_PER_ELEMENT = 4;
 
-    public NativeUint32Array() {
-    }
+    public NativeUint32Array() {}
 
     public NativeUint32Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len * BYTES_PER_ELEMENT);
     }
 
     public NativeUint32Array(int len) {
-        this(new NativeArrayBuffer(len * BYTES_PER_ELEMENT), 0, len);
+        this(new NativeArrayBuffer((double) len * BYTES_PER_ELEMENT), 0, len);
     }
 
     @Override
@@ -36,14 +37,20 @@ public class NativeUint32Array
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed) {
-        NativeUint32Array a = new NativeUint32Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    @Override
+    public void declare(String name, Scriptable start) {
+
     }
 
     @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor) {
-        addCtorSpecies(ctor);
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    public static void init(Context cx, Scriptable scope, boolean sealed) {
+        NativeUint32Array a = new NativeUint32Array();
+        IdFunctionObject constructor = a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        ScriptRuntimeES6.addSymbolSpecies(cx, scope, constructor);
     }
 
     @Override
@@ -58,11 +65,7 @@ public class NativeUint32Array
 
     @Override
     protected NativeUint32Array realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeUint32Array)) {
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint32Array) unwrappedThis;
+        return ensureType(thisObj, NativeUint32Array.class, f);
     }
 
     @Override
@@ -70,7 +73,8 @@ public class NativeUint32Array
         if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readUint32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
+        return ByteIo.readUint32(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
     }
 
     @Override
@@ -79,7 +83,8 @@ public class NativeUint32Array
             return Undefined.instance;
         }
         long val = Conversions.toUint32(c);
-        ByteIo.writeUint32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
+        ByteIo.writeUint32(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
         return null;
     }
 

@@ -8,10 +8,32 @@ package org.mozilla.javascript;
 
 public class ScriptRuntimeES6 {
 
-    public static Scriptable requireObjectCoercible(Context cx, Scriptable val, IdFunctionObject idFuncObj) {
+    public static Object requireObjectCoercible(
+            Context cx, Object val, IdFunctionObject idFuncObj) {
         if (val == null || Undefined.isUndefined(val)) {
-            throw ScriptRuntime.typeError2("msg.called.null.or.undefined", idFuncObj.getTag(), idFuncObj.getFunctionName());
+            throw ScriptRuntime.typeErrorById(
+                    "msg.called.null.or.undefined",
+                    idFuncObj.getTag(),
+                    idFuncObj.getFunctionName());
         }
         return val;
+    }
+
+    /** Registers the symbol <code>[Symbol.species]</code> on the given constructor function. */
+    public static void addSymbolSpecies(
+            Context cx, Scriptable scope, IdScriptableObject constructor) {
+        ScriptableObject speciesDescriptor = (ScriptableObject) cx.newObject(scope);
+        ScriptableObject.putProperty(speciesDescriptor, "enumerable", false);
+        ScriptableObject.putProperty(speciesDescriptor, "configurable", true);
+        ScriptableObject.putProperty(
+                speciesDescriptor,
+                "get",
+                new LambdaFunction(
+                        scope,
+                        "get [Symbol.species]",
+                        0,
+                        (Context lcx, Scriptable lscope, Scriptable thisObj, Object[] args) ->
+                                thisObj));
+        constructor.defineOwnProperty(cx, SymbolKey.SPECIES, speciesDescriptor, false);
     }
 }

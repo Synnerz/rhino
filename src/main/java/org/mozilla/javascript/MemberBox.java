@@ -10,24 +10,28 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 /**
- * Wrapper class for Method and Constructor instances to cache
- * getParameterTypes() results, recover from IllegalAccessException
- * in some cases and provide serialization support.
+ * Wrapper class for Method and Constructor instances to cache getParameterTypes() results, recover
+ * from IllegalAccessException in some cases and provide serialization support.
  *
  * @author Igor Bukanov
  */
-
 final class MemberBox implements Serializable {
     private static final long serialVersionUID = 6358550398665688245L;
 
     private transient Member memberObject;
     transient Class<?>[] argTypes;
-    transient Object delegateTo;
     transient boolean vararg;
 
+    transient Function asGetterFunction;
+    transient Function asSetterFunction;
+    transient Object delegateTo;
 
     MemberBox(Method method) {
         init(method);
@@ -110,8 +114,100 @@ final class MemberBox implements Serializable {
         return memberObject.toString();
     }
 
+    /** Function returned by calls to __lookupGetter__ */
+    Function asGetterFunction(final String name, final Scriptable scope) {
+        // Note: scope is the scriptable this function is related to; therefore this function
+        // is constant for this member box.
+        // Because of this we can cache the function in the attribute
+        if (asGetterFunction == null) {
+            asGetterFunction =
+                    new BaseFunction(scope, ScriptableObject.getFunctionPrototype(scope)) {
+                        @Override
+                        public Object call(
+                                Context cx,
+                                Scriptable callScope,
+                                Scriptable thisObj,
+                                Object[] originalArgs) {
+                            MemberBox nativeGetter = MemberBox.this;
+                            Object getterThis;
+                            Object[] args;
+                            if (nativeGetter.delegateTo == null) {
+                                getterThis = thisObj;
+                                args = ScriptRuntime.emptyArgs;
+                            } else {
+                                getterThis = nativeGetter.delegateTo;
+                                args = new Object[] {thisObj};
+                            }
+                            return nativeGetter.invoke(getterThis, args);
+                        }
+
+                        @Override
+                        public String getFunctionName() {
+                            return name;
+                        }
+                    };
+        }
+        return asGetterFunction;
+    }
+
+    /** Function returned by calls to __lookupSetter__ */
+    Function asSetterFunction(final String name, final Scriptable scope) {
+        // Note: scope is the scriptable this function is related to; therefore this function
+        // is constant for this member box.
+        // Because of this we can cache the function in the attribute
+        if (asSetterFunction == null) {
+            asSetterFunction =
+                    new BaseFunction(scope, ScriptableObject.getFunctionPrototype(scope)) {
+                        @Override
+                        public Object call(
+                                Context cx,
+                                Scriptable callScope,
+                                Scriptable thisObj,
+                                Object[] originalArgs) {
+                            MemberBox nativeSetter = MemberBox.this;
+                            Object setterThis;
+                            Object[] args;
+                            Object value =
+                                    originalArgs.length > 0
+                                            ? FunctionObject.convertArg(
+                                                    cx,
+                                                    thisObj,
+                                                    originalArgs[0],
+                                                    FunctionObject.getTypeTag(
+                                                            nativeSetter.argTypes[0]))
+                                            : Undefined.instance;
+                            if (nativeSetter.delegateTo == null) {
+                                setterThis = thisObj;
+                                args = new Object[] {value};
+                            } else {
+                                setterThis = nativeSetter.delegateTo;
+                                args = new Object[] {thisObj, value};
+                            }
+                            return nativeSetter.invoke(setterThis, args);
+                        }
+
+                        @Override
+                        public String getFunctionName() {
+                            return name;
+                        }
+                    };
+        }
+        return asSetterFunction;
+    }
+
     Object invoke(Object target, Object[] args) {
         Method method = method();
+
+        // handle delegators
+        if (target instanceof Delegator) {
+            target = ((Delegator) target).getDelegee();
+        }
+        for (int i = 0; i < args.length; ++i) {
+            if (args[i] instanceof Delegator) {
+                args[i] = ((Delegator) args[i]).getDelegee();
+            }
+        }
+
         try {
             try {
                 return method.invoke(target, args);
@@ -134,8 +230,7 @@ final class MemberBox implements Serializable {
             do {
                 e = ((InvocationTargetException) e).getTargetException();
             } while ((e instanceof InvocationTargetException));
-            if (e instanceof ContinuationPending)
-                throw (ContinuationPending) e;
+            if (e instanceof ContinuationPending) throw (ContinuationPending) e;
             throw Context.throwAsScriptRuntimeEx(e);
         } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);
@@ -184,8 +279,7 @@ final class MemberBox implements Serializable {
                         try {
                             Method m = c.getMethod(name, params);
                             int mModifiers = m.getModifiers();
-                            if (Modifier.isPublic(mModifiers)
-                                    && !Modifier.isStatic(mModifiers)) {
+                            if (Modifier.isPublic(mModifiers) && !Modifier.isStatic(mModifiers)) {
                                 return m;
                             }
                         } catch (NoSuchMethodException ex) {
@@ -198,8 +292,7 @@ final class MemberBox implements Serializable {
         return null;
     }
 
-    private void readObject(ObjectInputStream in)
-            throws IOException, ClassNotFoundException {
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         Member member = readMember(in);
         if (member instanceof Method) {
@@ -209,21 +302,18 @@ final class MemberBox implements Serializable {
         }
     }
 
-    private void writeObject(ObjectOutputStream out)
-            throws IOException {
+    private void writeObject(ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
         writeMember(out, memberObject);
     }
 
     /**
      * Writes a Constructor or Method object.
-     * <p>
-     * Methods and Constructors are not serializable, so we must serialize
-     * information about the class, the name, and the parameters and
-     * recreate upon deserialization.
+     *
+     * <p>Methods and Constructors are not serializable, so we must serialize information about the
+     * class, the name, and the parameters and recreate upon deserialization.
      */
-    private static void writeMember(ObjectOutputStream out, Member member)
-            throws IOException {
+    private static void writeMember(ObjectOutputStream out, Member member) throws IOException {
         if (member == null) {
             out.writeBoolean(false);
             return;
@@ -241,13 +331,10 @@ final class MemberBox implements Serializable {
         }
     }
 
-    /**
-     * Reads a Method or a Constructor from the stream.
-     */
+    /** Reads a Method or a Constructor from the stream. */
     private static Member readMember(ObjectInputStream in)
             throws IOException, ClassNotFoundException {
-        if (!in.readBoolean())
-            return null;
+        if (!in.readBoolean()) return null;
         boolean isMethod = in.readBoolean();
         String name = (String) in.readObject();
         Class<?> declaring = (Class<?>) in.readObject();
@@ -263,29 +350,28 @@ final class MemberBox implements Serializable {
     }
 
     private static final Class<?>[] primitives = {
-            Boolean.TYPE,
-            Byte.TYPE,
-            Character.TYPE,
-            Double.TYPE,
-            Float.TYPE,
-            Integer.TYPE,
-            Long.TYPE,
-            Short.TYPE,
-            Void.TYPE
+        Boolean.TYPE,
+        Byte.TYPE,
+        Character.TYPE,
+        Double.TYPE,
+        Float.TYPE,
+        Integer.TYPE,
+        Long.TYPE,
+        Short.TYPE,
+        Void.TYPE
     };
 
     /**
      * Writes an array of parameter types to the stream.
-     * <p>
-     * Requires special handling because primitive types cannot be
-     * found upon deserialization by the default Java implementation.
+     *
+     * <p>Requires special handling because primitive types cannot be found upon deserialization by
+     * the default Java implementation.
      */
     private static void writeParameters(ObjectOutputStream out, Class<?>[] parms)
             throws IOException {
         out.writeShort(parms.length);
         outer:
-        for (int i = 0; i < parms.length; i++) {
-            Class<?> parm = parms[i];
+        for (Class<?> parm : parms) {
             boolean primitive = parm.isPrimitive();
             out.writeBoolean(primitive);
             if (!primitive) {
@@ -298,14 +384,11 @@ final class MemberBox implements Serializable {
                     continue outer;
                 }
             }
-            throw new IllegalArgumentException("Primitive " + parm +
-                    " not found");
+            throw new IllegalArgumentException("Primitive " + parm + " not found");
         }
     }
 
-    /**
-     * Reads an array of parameter types from the stream.
-     */
+    /** Reads an array of parameter types from the stream. */
     private static Class<?>[] readParameters(ObjectInputStream in)
             throws IOException, ClassNotFoundException {
         Class<?>[] result = new Class[in.readShort()];
@@ -319,4 +402,3 @@ final class MemberBox implements Serializable {
         return result;
     }
 }
-

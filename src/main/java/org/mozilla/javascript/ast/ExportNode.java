@@ -1,10 +1,16 @@
 package org.mozilla.javascript.ast;
 
+import org.mozilla.javascript.Token;
 
 public class ExportNode extends ImportNode {
     private AstNode exportedValue = null;
     private String identifier = null;
     private boolean defaultExport = false;
+
+    public ExportNode() {
+        super();
+        type = Token.EXPORT;
+    }
 
     public AstNode getExportedValue() {
         return exportedValue;

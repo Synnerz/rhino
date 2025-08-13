@@ -14,18 +14,15 @@ public final class NativeStringIterator extends ES6Iterator {
         ES6Iterator.init(scope, sealed, new NativeStringIterator(), ITERATOR_TAG);
     }
 
-    /**
-     * Only for constructing the prototype object.
-     */
+    /** Only for constructing the prototype object. */
     private NativeStringIterator() {
         super();
     }
 
-    NativeStringIterator(Scriptable scope, Scriptable stringLike, boolean keyOnly) {
+    NativeStringIterator(Scriptable scope, Object stringLike) {
         super(scope, ITERATOR_TAG);
         this.index = 0;
         this.string = ScriptRuntime.toString(stringLike);
-        this.keyOnly = keyOnly;
     }
 
     @Override
@@ -34,20 +31,26 @@ public final class NativeStringIterator extends ES6Iterator {
     }
 
     @Override
-    public boolean isDone(Context cx, Scriptable scope) {
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
+    protected boolean isDone(Context cx, Scriptable scope) {
         return index >= string.length();
     }
 
     @Override
-    public Object nextValue(Context cx, Scriptable scope) {
-        if (keyOnly) {
-            return index++;
-        } else {
-            int newIndex = string.offsetByCodePoints(index, 1);
-            Object value = string.substring(index, newIndex);
-            index = newIndex;
-            return value;
-        }
+    protected Object nextValue(Context cx, Scriptable scope) {
+        int newIndex = string.offsetByCodePoints(index, 1);
+        Object value = string.substring(index, newIndex);
+        index = newIndex;
+        return value;
     }
 
     @Override
@@ -57,5 +60,4 @@ public final class NativeStringIterator extends ES6Iterator {
 
     private String string;
     private int index;
-    private boolean keyOnly;
 }

@@ -9,13 +9,12 @@ package org.mozilla.javascript.typedarrays;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-public class NativeTypedArrayIterator<T extends Comparable<T>> implements ListIterator<T> {
+public class NativeTypedArrayIterator<T> implements ListIterator<T> {
     private final NativeTypedArrayView<T> view;
 
-    /**
-     * Position represents the position of the NEXT element
-     */
+    /** Position represents the position of the NEXT element */
     private int position;
+
     private int lastPosition = -1;
 
     NativeTypedArrayIterator(NativeTypedArrayView<T> view, int start) {

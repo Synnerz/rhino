@@ -7,7 +7,7 @@ public class DecoratorNode extends FunctionCall {
     private DecoratorType decoratorType;
 
     {
-        putProp(Node.DECORATOR_PROP, true);
+//        putProp(Node.DECORATOR_PROP, true);
     }
 
     public DecoratorNode(int pos, Name name) {

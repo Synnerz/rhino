@@ -6,21 +6,18 @@
 
 package org.mozilla.javascript;
 
-import org.mozilla.javascript.ScriptableObject.Slot;
-import org.mozilla.javascript.ScriptableObject.SlotAccess;
-
 import java.util.Iterator;
 import java.util.concurrent.locks.StampedLock;
 
 /**
- * This class extends the SlotMapContainer so that we have thread-safe access to all
- * the properties of an object.
+ * This class extends the SlotMapContainer so that we have thread-safe access to all the properties
+ * of an object.
  */
-class ThreadSafeSlotMapContainer
-        extends SlotMapContainer {
+class ThreadSafeSlotMapContainer extends SlotMapContainer {
 
     private final StampedLock lock = new StampedLock();
 
+    ThreadSafeSlotMapContainer() {}
 
     ThreadSafeSlotMapContainer(int initialSize) {
         super(initialSize);
@@ -65,13 +62,21 @@ class ThreadSafeSlotMapContainer
     }
 
     @Override
-    public Slot get(Object key, int index, SlotAccess accessType) {
+    public Slot modify(Object key, int index, int attributes) {
         final long stamp = lock.writeLock();
         try {
-            if (accessType != SlotAccess.QUERY) {
-                checkMapSize();
-            }
-            return map.get(key, index, accessType);
+            checkMapSize();
+            return map.modify(key, index, attributes);
+        } finally {
+            lock.unlockWrite(stamp);
+        }
+    }
+
+    @Override
+    public void replace(Slot oldSlot, Slot newSlot) {
+        final long stamp = lock.writeLock();
+        try {
+            map.replace(oldSlot, newSlot);
         } finally {
             lock.unlockWrite(stamp);
         }
@@ -94,11 +99,11 @@ class ThreadSafeSlotMapContainer
     }
 
     @Override
-    public void addSlot(Slot newSlot) {
+    public void add(Slot newSlot) {
         final long stamp = lock.writeLock();
         try {
             checkMapSize();
-            map.addSlot(newSlot);
+            map.add(newSlot);
         } finally {
             lock.unlockWrite(stamp);
         }
@@ -115,8 +120,8 @@ class ThreadSafeSlotMapContainer
     }
 
     /**
-     * Take out a read lock on the slot map, if locking is implemented. The caller MUST call
-     * this method before using the iterator, and MUST NOT call this method otherwise.
+     * Take out a read lock on the slot map, if locking is implemented. The caller MUST call this
+     * method before using the iterator, and MUST NOT call this method otherwise.
      */
     @Override
     public long readLock() {

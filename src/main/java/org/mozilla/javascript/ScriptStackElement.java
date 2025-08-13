@@ -9,8 +9,8 @@ import java.io.Serializable;
 /**
  * This class represents an element on the script execution stack.
  *
- * @author Hannes Wallnoefer
  * @see RhinoException#getScriptStack()
+ * @author Hannes Wallnoefer
  * @since 1.7R3
  */
 public final class ScriptStackElement implements Serializable {
@@ -35,8 +35,8 @@ public final class ScriptStackElement implements Serializable {
     }
 
     /**
-     * Render stack element in Java-inspired style:
-     * <code>    at fileName:lineNumber (functionName)</code>
+     * Render stack element in Java-inspired style: <code>    at fileName:lineNumber (functionName)
+     * </code>
      *
      * @param sb the StringBuilder to append to
      */
@@ -51,8 +51,8 @@ public final class ScriptStackElement implements Serializable {
     }
 
     /**
-     * Render stack element in Mozilla/Firefox style:
-     * <code>functionName()@fileName:lineNumber</code>
+     * Render stack element in Mozilla/Firefox style: <code>functionName()@fileName:lineNumber
+     * </code>
      *
      * @param sb the StringBuilder to append to
      */
@@ -67,18 +67,18 @@ public final class ScriptStackElement implements Serializable {
     }
 
     /**
-     * Render stack element in V8 style:
-     * <code>    at functionName (fileName:lineNumber:columnNumber)</code>
-     * or:
-     * <code>    at fileName:lineNumber:columnNumber</code>
+     * Render stack element in V8 style: <code>
+     *     at functionName (fileName:lineNumber:columnNumber)</code> or: <code>
+     *     at fileName:lineNumber:columnNumber</code>
      *
      * @param sb the StringBuilder to append to
      */
     public void renderV8Style(StringBuilder sb) {
         sb.append("    at ");
 
-        if ((functionName == null) || "anonymous".equals(functionName) || "undefined"
-                .equals(functionName)) {
+        if ((functionName == null)
+                || "anonymous".equals(functionName)
+                || "undefined".equals(functionName)) {
             // Anonymous functions in V8 don't have names in the stack trace
             appendV8Location(sb);
 

@@ -8,20 +8,17 @@ package org.mozilla.javascript;
 
 /**
  * A wrapper for runtime exceptions.
- * <p>
- * Used by the JavaScript runtime to wrap and propagate exceptions that occur
- * during runtime.
+ *
+ * <p>Used by the JavaScript runtime to wrap and propagate exceptions that occur during runtime.
  *
  * @author Norris Boyd
  */
 public class WrappedException extends EvaluatorException {
     private static final long serialVersionUID = -1551979216966520648L;
 
-    /**
-     * @see Context#throwAsScriptRuntimeEx(Throwable e)
-     */
+    /** @see Context#throwAsScriptRuntimeEx(Throwable e) */
     public WrappedException(Throwable exception) {
-        super("Wrapped " + exception.toString());
+        super("Wrapped " + exception);
         this.exception = exception;
         this.initCause(exception);
 
@@ -39,16 +36,14 @@ public class WrappedException extends EvaluatorException {
     /**
      * Get the wrapped exception.
      *
-     * @return the exception that was presented as a argument to the
-     * constructor when this object was created
+     * @return the exception that was presented as a argument to the constructor when this object
+     *     was created
      */
     public Throwable getWrappedException() {
         return exception;
     }
 
-    /**
-     * @deprecated Use {@link #getWrappedException()} instead.
-     */
+    /** @deprecated Use {@link #getWrappedException()} instead. */
     @Deprecated
     public Object unwrap() {
         return getWrappedException();

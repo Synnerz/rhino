@@ -2,21 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-
 package org.mozilla.javascript.optimizer;
 
-import org.mozilla.javascript.*;
-import org.mozilla.javascript.ast.ScriptNode;
-
 import java.util.Map;
+import org.mozilla.javascript.Kit;
+import org.mozilla.javascript.Node;
+import org.mozilla.javascript.NodeTransformer;
+import org.mozilla.javascript.ObjArray;
+import org.mozilla.javascript.Token;
+import org.mozilla.javascript.ast.ScriptNode;
 
 /**
  * This class performs node transforms to prepare for optimization.
  *
- * @author Norris Boyd
  * @see NodeTransformer
+ * @author Norris Boyd
  */
-
 class OptTransformer extends NodeTransformer {
 
     OptTransformer(Map<String, OptFunctionNode> possibleDirectCalls, ObjArray directCallTargets) {
@@ -42,10 +43,12 @@ class OptTransformer extends NodeTransformer {
 
             // count the arguments
             int argCount = 0;
-            Node arg = left.getNext();
-            while (arg != null) {
-                arg = arg.getNext();
-                argCount++;
+            if (left != null) {
+                Node arg = left.getNext();
+                while (arg != null) {
+                    arg = arg.getNext();
+                    argCount++;
+                }
             }
 
             if (argCount == 0) {

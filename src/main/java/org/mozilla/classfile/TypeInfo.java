@@ -7,15 +7,13 @@
 package org.mozilla.classfile;
 
 /**
- * Helper class for internal representations of type information. In most
- * cases, type information can be represented by a constant, but in some
- * cases, a payload is included. Despite the payload coming after the type
- * tag in the output, we store it in bits 8-23 for uniformity; the tag is
+ * Helper class for internal representations of type information. In most cases, type information
+ * can be represented by a constant, but in some cases, a payload is included. Despite the payload
+ * coming after the type tag in the output, we store it in bits 8-23 for uniformity; the tag is
  * always in bits 0-7.
  */
 final class TypeInfo {
-    private TypeInfo() {
-    }
+    private TypeInfo() {}
 
     static final int TOP = 0;
     static final int INTEGER = 1;
@@ -48,10 +46,10 @@ final class TypeInfo {
     }
 
     /**
-     * Treat the result of getPayload as a constant pool index and fetch the
-     * corresponding String mapped to it.
-     * <p>
-     * Only works on OBJECT types.
+     * Treat the result of getPayload as a constant pool index and fetch the corresponding String
+     * mapped to it.
+     *
+     * <p>Only works on OBJECT types.
      */
     static final String getPayloadAsType(int typeInfo, ConstantPool pool) {
         if (getTag(typeInfo) == OBJECT_TAG) {
@@ -60,9 +58,7 @@ final class TypeInfo {
         throw new IllegalArgumentException("expecting object type");
     }
 
-    /**
-     * Create type information from an internal type.
-     */
+    /** Create type information from an internal type. */
     static final int fromType(String type, ConstantPool pool) {
         if (type.length() == 1) {
             switch (type.charAt(0)) {
@@ -91,32 +87,30 @@ final class TypeInfo {
 
     /**
      * Merge two verification types.
-     * <p>
-     * In most cases, the verification types must be the same. For example,
-     * INTEGER and DOUBLE cannot be merged and an exception will be thrown.
-     * The basic rules are:
-     * <p>
-     * - If the types are equal, simply return one.
-     * - If either type is TOP, return TOP.
-     * - If either type is NULL, return the other type.
-     * - If both types are objects, find the lowest common ancestor in the
-     * class hierarchy.
-     * <p>
-     * This method uses reflection to traverse the class hierarchy. Therefore,
-     * it is assumed that the current class being generated is never the target
-     * of a full object-object merge, which would need to load the current
-     * class reflectively.
+     *
+     * <p>In most cases, the verification types must be the same. For example, INTEGER and DOUBLE
+     * cannot be merged and an exception will be thrown. The basic rules are:
+     *
+     * <p>- If the types are equal, simply return one. - If either type is TOP, return TOP. - If
+     * either type is NULL, return the other type. - If both types are objects, find the lowest
+     * common ancestor in the class hierarchy.
+     *
+     * <p>This method uses reflection to traverse the class hierarchy. Therefore, it is assumed that
+     * the current class being generated is never the target of a full object-object merge, which
+     * would need to load the current class reflectively.
      */
     static int merge(int current, int incoming, ConstantPool pool) {
+        if (current == incoming) {
+            return current;
+        }
         int currentTag = getTag(current);
         int incomingTag = getTag(incoming);
         boolean currentIsObject = currentTag == TypeInfo.OBJECT_TAG;
         boolean incomingIsObject = incomingTag == TypeInfo.OBJECT_TAG;
 
-        if (current == incoming || (currentIsObject && incoming == NULL)) {
+        if (currentIsObject && incoming == NULL) {
             return current;
-        } else if (currentTag == TypeInfo.TOP ||
-                incomingTag == TypeInfo.TOP) {
+        } else if (currentTag == TypeInfo.TOP || incomingTag == TypeInfo.TOP) {
             return TypeInfo.TOP;
         } else if (current == NULL && incomingIsObject) {
             return incoming;
@@ -127,8 +121,7 @@ final class TypeInfo {
             // spot. The constant order is: class_data, class_name, super_data,
             // super_name.
             String currentlyGeneratedName = (String) pool.getConstantData(2);
-            String currentlyGeneratedSuperName =
-                    (String) pool.getConstantData(4);
+            String currentlyGeneratedSuperName = (String) pool.getConstantData(4);
 
             // If any of the merged types are the class that's currently being
             // generated, automatically start at the super class instead. At
@@ -148,8 +141,7 @@ final class TypeInfo {
                 return current;
             } else if (incomingClass.isAssignableFrom(currentClass)) {
                 return incoming;
-            } else if (incomingClass.isInterface() ||
-                    currentClass.isInterface()) {
+            } else if (incomingClass.isInterface() || currentClass.isInterface()) {
                 // For verification purposes, Sun specifies that interfaces are
                 // subtypes of Object. Therefore, we know that the merge result
                 // involving interfaces where one is not assignable to the
@@ -167,9 +159,11 @@ final class TypeInfo {
                 }
             }
         }
-        throw new IllegalArgumentException("bad merge attempt between " +
-                toString(current, pool) + " and " +
-                toString(incoming, pool));
+        throw new IllegalArgumentException(
+                "bad merge attempt between "
+                        + toString(current, pool)
+                        + " and "
+                        + toString(incoming, pool));
     }
 
     static String toString(int type, ConstantPool pool) {
@@ -201,10 +195,9 @@ final class TypeInfo {
     }
 
     /**
-     * Take an internal name and return a java.lang.Class instance that
-     * represents it.
-     * <p>
-     * For example, given "java/lang/Object", returns the equivalent of
+     * Take an internal name and return a java.lang.Class instance that represents it.
+     *
+     * <p>For example, given "java/lang/Object", returns the equivalent of
      * Class.forName("java.lang.Object"), but also handles exceptions.
      */
     private static Class<?> getClassFromInternalName(String internalName) {
@@ -232,8 +225,7 @@ final class TypeInfo {
         print(locals, locals.length, stack, stack.length, pool);
     }
 
-    static void print(int[] locals, int localsTop, int[] stack, int stackTop,
-                      ConstantPool pool) {
+    static void print(int[] locals, int localsTop, int[] stack, int stackTop, ConstantPool pool) {
         System.out.print("locals: ");
         System.out.println(toString(locals, localsTop, pool));
         System.out.print("stack: ");

@@ -22,9 +22,7 @@ public final class NativeArrayIterator extends ES6Iterator {
         ES6Iterator.init(scope, sealed, new NativeArrayIterator(), ITERATOR_TAG);
     }
 
-    /**
-     * Only for constructing the prototype object.
-     */
+    /** Only for constructing the prototype object. */
     private NativeArrayIterator() {
         super();
     }
@@ -42,23 +40,33 @@ public final class NativeArrayIterator extends ES6Iterator {
     }
 
     @Override
-    public boolean isDone(Context cx, Scriptable scope) {
-        return arrayLike == null || index >= NativeArray.getLengthProperty(arrayLike, false);
+    public void declare(String name, Scriptable start) {
+
     }
 
     @Override
-    public Object nextValue(Context cx, Scriptable scope) {
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
+    protected boolean isDone(Context cx, Scriptable scope) {
+        return index >= NativeArray.getLengthProperty(cx, arrayLike);
+    }
+
+    @Override
+    protected Object nextValue(Context cx, Scriptable scope) {
         if (type == ARRAY_ITERATOR_TYPE.KEYS) {
-            return index++;
+            return Integer.valueOf(index++);
         }
 
         Object value = arrayLike.get(index, arrayLike);
-        if (value == ScriptableObject.NOT_FOUND) {
+        if (value == Scriptable.NOT_FOUND) {
             value = Undefined.instance;
         }
 
         if (type == ARRAY_ITERATOR_TYPE.ENTRIES) {
-            value = cx.newArray(scope, new Object[]{index, value});
+            value = cx.newArray(scope, new Object[] {Integer.valueOf(index), value});
         }
 
         index++;
@@ -73,4 +81,3 @@ public final class NativeArrayIterator extends ES6Iterator {
     private Scriptable arrayLike;
     private int index;
 }
-

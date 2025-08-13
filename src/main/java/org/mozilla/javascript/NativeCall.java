@@ -8,11 +8,11 @@ package org.mozilla.javascript;
 
 /**
  * This class implements the activation object.
- * <p>
- * See ECMA 10.1.6
  *
- * @author Norris Boyd
+ * <p>See ECMA 10.1.6
+ *
  * @see org.mozilla.javascript.Arguments
+ * @author Norris Boyd
  */
 public final class NativeCall extends IdScriptableObject {
     private static final long serialVersionUID = -7471457301304454454L;
@@ -24,29 +24,52 @@ public final class NativeCall extends IdScriptableObject {
         obj.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
     }
 
-    NativeCall() {
-    }
+    NativeCall() {}
 
-    NativeCall(NativeFunction function, Scriptable scope, Object[] callArgs,
-               Object[] effectiveArgs, boolean isArrow, boolean isStrict, boolean syncArgumentsObj) {
+    NativeCall(
+            NativeFunction function,
+            Context cx,
+            Scriptable scope,
+            Object[] args,
+            boolean isArrow,
+            boolean isStrict,
+            boolean argsHasRest) {
         this.function = function;
 
         setParentScope(scope);
         // leave prototype null
 
-        this.syncArgumentsObj = !isStrict && syncArgumentsObj;
-        this.callArgs = (callArgs == null) ? ScriptRuntime.emptyArgs : callArgs;
-        this.effectiveArgs = (effectiveArgs == null) ? ScriptRuntime.emptyArgs : effectiveArgs;
+        this.originalArgs = (args == null) ? ScriptRuntime.emptyArgs : args;
         this.isStrict = isStrict;
 
         // initialize values of arguments
         int paramAndVarCount = function.getParamAndVarCount();
         int paramCount = function.getParamCount();
         if (paramAndVarCount != 0) {
-            for (int i = 0; i < paramCount + (function.hasRest() ? 1 : 0); ++i) {
-                String name = function.getParamOrVarName(i);
-                Object val = i < this.effectiveArgs.length ? this.effectiveArgs[i] : Undefined.instance;
-                defineProperty(name, val, NOT_CONFIGURABLE);
+            if (argsHasRest) {
+                Object[] vals;
+                if (args.length >= paramCount) {
+                    vals = new Object[args.length - paramCount];
+                    System.arraycopy(args, paramCount, vals, 0, args.length - paramCount);
+                } else {
+                    vals = ScriptRuntime.emptyArgs;
+                }
+
+                for (int i = 0; i < paramCount; ++i) {
+                    String name = function.getParamOrVarName(i);
+                    Object val = i < args.length ? args[i] : Undefined.instance;
+                    defineProperty(name, val, PERMANENT);
+                }
+                defineProperty(
+                        function.getParamOrVarName(paramCount),
+                        cx.newArray(scope, vals),
+                        PERMANENT);
+            } else {
+                for (int i = 0; i < paramCount; ++i) {
+                    String name = function.getParamOrVarName(i);
+                    Object val = i < args.length ? args[i] : Undefined.instance;
+                    defineProperty(name, val, PERMANENT);
+                }
             }
         }
 
@@ -54,7 +77,7 @@ public final class NativeCall extends IdScriptableObject {
         // the parameter with the same name
         if (!super.has("arguments", this) && !isArrow) {
             arguments = new Arguments(this);
-            defineProperty("arguments", arguments, NOT_CONFIGURABLE);
+            defineProperty("arguments", arguments, PERMANENT);
         }
 
         if (paramAndVarCount != 0) {
@@ -64,8 +87,8 @@ public final class NativeCall extends IdScriptableObject {
                     if (function.getParamOrVarConst(i)) {
                         defineProperty(name, Undefined.instance, CONST);
                     } else if (!(function instanceof InterpretedFunction)
-                        || ((InterpretedFunction) function).hasFunctionNamed(name)) {
-                        defineProperty(name, Undefined.instance, NOT_CONFIGURABLE);
+                            || ((InterpretedFunction) function).hasFunctionNamed(name)) {
+                        defineProperty(name, Undefined.instance, PERMANENT);
                     }
                 }
             }
@@ -75,6 +98,16 @@ public final class NativeCall extends IdScriptableObject {
     @Override
     public String getClassName() {
         return "Call";
+    }
+
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
     }
 
     @Override
@@ -96,14 +129,15 @@ public final class NativeCall extends IdScriptableObject {
     }
 
     @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+    public Object execIdCall(
+            IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (!f.hasTag(CALL_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
         }
         int id = f.methodId();
         if (id == Id_constructor) {
             if (thisObj != null) {
-                throw Context.reportRuntimeError1("msg.only.from.new", "Call");
+                throw Context.reportRuntimeErrorById("msg.only.from.new", "Call");
             }
             ScriptRuntime.checkDeprecated(cx, "Call");
             NativeCall result = new NativeCall();
@@ -113,51 +147,18 @@ public final class NativeCall extends IdScriptableObject {
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    /**
-     * Bypasses the arguments object synchronization. This is called
-     * from the activation to achieve two-way synchronization. If the
-     * other method was called, it would cause a stack overflow.
-     */
-    public void putRaw(String name, Scriptable start, Object value) {
-        super.put(name, start, value);
-    }
-
-    @Override
-    public void put(String name, Scriptable start, Object value) {
-        if (this.syncArgumentsObj && arguments != null) {
-            int index = -1;
-
-            for (int i = 0; i < function.getParamCount() && index == -1; i++) {
-                if (function.getParamOrVarName(i).equals(name)) {
-                    index = i;
-                }
-            }
-
-            if (index != -1) {
-                ScriptableObject.putProperty(arguments, index, value);
-            }
-        }
-
-        super.put(name, start, value);
-    }
-
     public void defineAttributesForArguments() {
         if (arguments != null) {
             arguments.defineAttributesForStrictMode();
         }
     }
 
-    private static final int
-            Id_constructor = 1,
-            MAX_PROTOTYPE_ID = 1;
+    private static final int Id_constructor = 1, MAX_PROTOTYPE_ID = 1;
 
     NativeFunction function;
-    Object[] callArgs;
-    Object[] effectiveArgs;
+    Object[] originalArgs;
     boolean isStrict;
-    boolean syncArgumentsObj;
     private Arguments arguments;
 
     transient NativeCall parentActivationCall;
 }
-

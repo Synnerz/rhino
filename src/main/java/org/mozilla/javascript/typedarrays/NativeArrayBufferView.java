@@ -9,33 +9,30 @@ package org.mozilla.javascript.typedarrays;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.IdScriptableObject;
 import org.mozilla.javascript.ScriptRuntime;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Symbol;
+import org.mozilla.javascript.SymbolKey;
 import org.mozilla.javascript.Undefined;
 
 /**
  * This class is the abstract parent for all views of the array. It shows a view of the underlying
- * NativeArrayBuffer. Many views may simultaneously share the same buffer, and changes to one will affect all.
+ * NativeArrayBuffer. Many views may simultaneously share the same buffer, and changes to one will
+ * affect all.
  */
-
 public abstract class NativeArrayBufferView extends IdScriptableObject {
     private static final long serialVersionUID = 6884475582973958419L;
 
     private static Boolean useLittleEndian = null;
 
-    /**
-     * Many view objects can share the same backing array
-     */
+    /** Many view objects can share the same backing array */
     protected final NativeArrayBuffer arrayBuffer;
-    /**
-     * The offset, in bytes, from the start of the backing array
-     */
+    /** The offset, in bytes, from the start of the backing array */
     protected final int offset;
-    /**
-     * The length, in bytes, of the portion of the backing array that we use
-     */
+    /** The length, in bytes, of the portion of the backing array that we use */
     protected final int byteLength;
 
     public NativeArrayBufferView() {
-        arrayBuffer = NativeArrayBuffer.EMPTY_BUFFER;
+        arrayBuffer = new NativeArrayBuffer();
         offset = 0;
         byteLength = 0;
     }
@@ -46,23 +43,17 @@ public abstract class NativeArrayBufferView extends IdScriptableObject {
         this.arrayBuffer = ab;
     }
 
-    /**
-     * Return the buffer that backs this view.
-     */
+    /** Return the buffer that backs this view. */
     public NativeArrayBuffer getBuffer() {
         return arrayBuffer;
     }
 
-    /**
-     * Return the offset in bytes from the start of the buffer that this view represents.
-     */
+    /** Return the offset in bytes from the start of the buffer that this view represents. */
     public int getByteOffset() {
         return offset;
     }
 
-    /**
-     * Return the length, in bytes, of the part of the buffer that this view represents.
-     */
+    /** Return the length, in bytes, of the part of the buffer that this view represents. */
     public int getByteLength() {
         return byteLength;
     }
@@ -74,7 +65,7 @@ public abstract class NativeArrayBufferView extends IdScriptableObject {
             if (ctx == null) {
                 return false;
             }
-            useLittleEndian = ctx.hasFeature(Context.FEATURE_LITTLE_ENDIAN);
+            useLittleEndian = Boolean.valueOf(ctx.hasFeature(Context.FEATURE_LITTLE_ENDIAN));
         }
         return useLittleEndian.booleanValue();
     }
@@ -118,49 +109,39 @@ public abstract class NativeArrayBufferView extends IdScriptableObject {
         }
     }
 
-// #string_id_map#
-
     @Override
     protected int findInstanceIdInfo(String s) {
         int id;
-// #generated# Last update: 2014-12-08 17:32:09 PST
-        L0:
-        {
-            id = 0;
-            String X = null;
-            int c;
-            int s_length = s.length();
-            if (s_length == 6) {
-                X = "buffer";
+        switch (s) {
+            case "buffer":
                 id = Id_buffer;
-            } else if (s_length == 10) {
-                c = s.charAt(4);
-                if (c == 'L') {
-                    X = "byteLength";
-                    id = Id_byteLength;
-                } else if (c == 'O') {
-                    X = "byteOffset";
-                    id = Id_byteOffset;
-                }
-            }
-            if (X != null && X != s && !X.equals(s)) id = 0;
-            break L0;
+                break;
+            case "byteOffset":
+                id = Id_byteOffset;
+                break;
+            case "byteLength":
+                id = Id_byteLength;
+                break;
+            default:
+                id = 0;
+                break;
         }
-// #/generated#
         if (id == 0) {
             return super.findInstanceIdInfo(s);
         }
-        return instanceIdInfo(NOT_WRITABLE | NOT_CONFIGURABLE, id);
+        return instanceIdInfo(READONLY | PERMANENT, id);
     }
 
-    private static final int
-            Id_buffer = 1,
-            Id_byteOffset = 2,
-            Id_byteLength = 3;
+    @Override
+    public Object get(Symbol key, Scriptable start) {
+        if (SymbolKey.TO_STRING_TAG.equals(key)) {
+            return getClassName();
+        }
+        return super.get(key, start);
+    }
+
+    private static final int Id_buffer = 1, Id_byteOffset = 2, Id_byteLength = 3;
 
     // to be visible by subclasses
-    protected static final int
-            MAX_INSTANCE_ID = Id_byteLength;
-
-// #/string_id_map#
+    protected static final int MAX_INSTANCE_ID = Id_byteLength;
 }

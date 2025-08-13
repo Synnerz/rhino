@@ -6,24 +6,28 @@
 
 package org.mozilla.javascript;
 
-import org.mozilla.javascript.ScriptableObject.Slot;
-import org.mozilla.javascript.ScriptableObject.SlotAccess;
-
 import java.util.Iterator;
 
 /**
- * This class holds the various SlotMaps of various types, and knows how to atomically
- * switch between them when we need to so that we use the right data structure at the right time.
+ * This class holds the various SlotMaps of various types, and knows how to atomically switch
+ * between them when we need to so that we use the right data structure at the right time.
  */
 class SlotMapContainer implements SlotMap {
+
     /**
-     * Once the object has this many properties in it, we will replace the EmbeddedSlotMap
-     * with HashSlotMap. We can adjust this parameter to balance
-     * performance for typical objects versus performance for huge objects with many collisions.
+     * Once the object has this many properties in it, we will replace the EmbeddedSlotMap with
+     * HashSlotMap. We can adjust this parameter to balance performance for typical objects versus
+     * performance for huge objects with many collisions.
      */
     private static final int LARGE_HASH_SIZE = 2000;
 
+    private static final int DEFAULT_SIZE = 10;
+
     protected SlotMap map;
+
+    SlotMapContainer() {
+        this(DEFAULT_SIZE);
+    }
 
     SlotMapContainer(int initialSize) {
         if (initialSize > LARGE_HASH_SIZE) {
@@ -48,11 +52,14 @@ class SlotMapContainer implements SlotMap {
     }
 
     @Override
-    public Slot get(Object key, int index, SlotAccess accessType) {
-        if (accessType != SlotAccess.QUERY) {
-            checkMapSize();
-        }
-        return map.get(key, index, accessType);
+    public Slot modify(Object key, int index, int attributes) {
+        checkMapSize();
+        return map.modify(key, index, attributes);
+    }
+
+    @Override
+    public void replace(Slot oldSlot, Slot newSlot) {
+        map.replace(oldSlot, newSlot);
     }
 
     @Override
@@ -61,14 +68,9 @@ class SlotMapContainer implements SlotMap {
     }
 
     @Override
-    public void addSlot(Slot newSlot) {
+    public void add(Slot newSlot) {
         checkMapSize();
-        map.addSlot(newSlot);
-    }
-
-    @Override
-    public void createSlot(String key, Slot slot) {
-        map.createSlot(key, slot);
+        map.add(newSlot);
     }
 
     @Override
@@ -87,7 +89,7 @@ class SlotMapContainer implements SlotMap {
     }
 
     public void unlockRead(long stamp) {
-        // No locking in the default implementationock.unlockRead(stamp);
+        // No locking in the default implementation
     }
 
     /**
@@ -98,7 +100,7 @@ class SlotMapContainer implements SlotMap {
         if ((map instanceof EmbeddedSlotMap) && map.size() >= LARGE_HASH_SIZE) {
             SlotMap newMap = new HashSlotMap();
             for (Slot s : map) {
-                newMap.addSlot(s);
+                newMap.add(s);
             }
             map = newMap;
         }

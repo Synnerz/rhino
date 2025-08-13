@@ -6,29 +6,31 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.ScriptRuntime;
+import org.mozilla.javascript.ScriptRuntimeES6;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
  * An array view that stores 32-bit quantities and implements the JavaScript "Int32Array" interface.
  * It also implements List&lt;Integer&gt; for direct manipulation in Java.
  */
-
-public class NativeInt32Array
-        extends NativeTypedArrayView<Integer> {
+public class NativeInt32Array extends NativeTypedArrayView<Integer> {
     private static final long serialVersionUID = -8963461831950499340L;
 
     private static final String CLASS_NAME = "Int32Array";
     private static final int BYTES_PER_ELEMENT = 4;
 
-    public NativeInt32Array() {
-    }
+    public NativeInt32Array() {}
 
     public NativeInt32Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len * BYTES_PER_ELEMENT);
     }
 
     public NativeInt32Array(int len) {
-        this(new NativeArrayBuffer(len * BYTES_PER_ELEMENT), 0, len);
+        this(new NativeArrayBuffer((double) len * BYTES_PER_ELEMENT), 0, len);
     }
 
     @Override
@@ -37,13 +39,19 @@ public class NativeInt32Array
     }
 
     @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor) {
-        addCtorSpecies(ctor);
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
     }
 
     public static void init(Context cx, Scriptable scope, boolean sealed) {
         NativeInt32Array a = new NativeInt32Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        IdFunctionObject constructor = a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        ScriptRuntimeES6.addSymbolSpecies(cx, scope, constructor);
     }
 
     @Override
@@ -58,11 +66,7 @@ public class NativeInt32Array
 
     @Override
     protected NativeInt32Array realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeInt32Array)) {
-            throw incompatibleCallError(f);
-        }
-        return (NativeInt32Array) unwrappedThis;
+        return ensureType(thisObj, NativeInt32Array.class, f);
     }
 
     @Override
@@ -70,7 +74,8 @@ public class NativeInt32Array
         if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readInt32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
+        return ByteIo.readInt32(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
     }
 
     @Override
@@ -79,7 +84,8 @@ public class NativeInt32Array
             return Undefined.instance;
         }
         int val = ScriptRuntime.toInt32(c);
-        ByteIo.writeInt32(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
+        ByteIo.writeInt32(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
         return null;
     }
 

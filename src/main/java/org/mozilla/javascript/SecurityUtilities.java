@@ -10,13 +10,11 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 
-/**
- * @author Attila Szegedi
- */
+/** @author Attila Szegedi */
 public class SecurityUtilities {
     /**
-     * Retrieves a system property within a privileged block. Use it only when
-     * the property is used from within Rhino code and is not passed out of it.
+     * Retrieves a system property within a privileged block. Use it only when the property is used
+     * from within Rhino code and is not passed out of it.
      *
      * @param name the name of the system property
      * @return the value of the system property
@@ -42,10 +40,9 @@ public class SecurityUtilities {
     }
 
     /**
-     * Look up the top-most element in the current stack representing a
-     * script and return its protection domain. This relies on the system-wide
-     * SecurityManager being an instance of {@link RhinoSecurityManager},
-     * otherwise it returns <code>null</code>.
+     * Look up the top-most element in the current stack representing a script and return its
+     * protection domain. This relies on the system-wide SecurityManager being an instance of {@link
+     * RhinoSecurityManager}, otherwise it returns <code>null</code>.
      *
      * @return The protection of the top-most script in the current stack, or null
      */
@@ -56,12 +53,12 @@ public class SecurityUtilities {
                     new PrivilegedAction<ProtectionDomain>() {
                         @Override
                         public ProtectionDomain run() {
-                            Class<?> c = ((RhinoSecurityManager) securityManager)
-                                    .getCurrentScriptClass();
+                            Class<?> c =
+                                    ((RhinoSecurityManager) securityManager)
+                                            .getCurrentScriptClass();
                             return c == null ? null : c.getProtectionDomain();
                         }
-                    }
-            );
+                    });
         }
         return null;
     }

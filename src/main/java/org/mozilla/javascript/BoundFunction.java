@@ -7,8 +7,7 @@
 package org.mozilla.javascript;
 
 /**
- * The class for results of the Function.bind operation
- * EcmaScript 5 spec, 15.3.4.5
+ * The class for results of the Function.bind operation EcmaScript 5 spec, 15.3.4.5
  *
  * @author Raphael Speyer
  */
@@ -21,8 +20,12 @@ public class BoundFunction extends BaseFunction {
     private final Object[] boundArgs;
     private final int length;
 
-    public BoundFunction(Context cx, Scriptable scope, Callable targetFunction, Scriptable boundThis,
-                         Object[] boundArgs) {
+    public BoundFunction(
+            Context cx,
+            Scriptable scope,
+            Callable targetFunction,
+            Scriptable boundThis,
+            Object[] boundArgs) {
         this.targetFunction = targetFunction;
         this.boundThis = boundThis;
         this.boundArgs = boundArgs;
@@ -32,7 +35,7 @@ public class BoundFunction extends BaseFunction {
             length = 0;
         }
 
-        ScriptRuntime.setFunctionProtoAndParent(this, scope);
+        ScriptRuntime.setFunctionProtoAndParent(this, cx, scope, false);
 
         if (targetFunction instanceof Scriptable) {
             this.setPrototype(((Scriptable) targetFunction).getPrototype());
@@ -40,10 +43,11 @@ public class BoundFunction extends BaseFunction {
 
         Function thrower = ScriptRuntime.typeErrorThrower(cx);
         NativeObject throwing = new NativeObject();
+        ScriptRuntime.setBuiltinProtoAndParent(throwing, scope, TopLevel.Builtins.Object);
         throwing.put("get", throwing, thrower);
         throwing.put("set", throwing, thrower);
-        throwing.put("enumerable", throwing, false);
-        throwing.put("configurable", throwing, false);
+        throwing.put("enumerable", throwing, Boolean.FALSE);
+        throwing.put("configurable", throwing, Boolean.FALSE);
         throwing.preventExtensions();
 
         this.defineOwnProperty(cx, "caller", throwing, false);
@@ -52,16 +56,23 @@ public class BoundFunction extends BaseFunction {
 
     @Override
     public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] extraArgs) {
-        Scriptable callThis = boundThis != null ? boundThis : ScriptRuntime.getTopCallScope(cx);
+        Scriptable callThis = boundThis;
+        if (callThis == null && ScriptRuntime.hasTopCall(cx)) {
+            callThis = ScriptRuntime.getTopCallScope(cx);
+        }
+        if (callThis == null) {
+            callThis = getTopLevelScope(scope);
+        }
         return targetFunction.call(cx, scope, callThis, concat(boundArgs, extraArgs));
     }
 
     @Override
     public Scriptable construct(Context cx, Scriptable scope, Object[] extraArgs) {
-        if (targetFunction instanceof Function) {
-            return ((Function) targetFunction).construct(cx, scope, concat(boundArgs, extraArgs));
+        if (targetFunction instanceof BaseFunction) {
+            Object[] args = concat(boundArgs, extraArgs);
+            return ((BaseFunction) targetFunction).construct(cx, scope, args, boundThis);
         }
-        throw ScriptRuntime.typeError0("msg.not.ctor");
+        throw ScriptRuntime.typeErrorById("msg.not.ctor");
     }
 
     @Override
@@ -69,7 +80,7 @@ public class BoundFunction extends BaseFunction {
         if (targetFunction instanceof BaseFunction) {
             return ((BaseFunction) targetFunction).getForcedNewTarget();
         }
-        throw ScriptRuntime.typeError0("msg.not.ctor");
+        throw ScriptRuntime.typeErrorById("msg.not.ctor");
     }
 
     @Override
@@ -78,7 +89,7 @@ public class BoundFunction extends BaseFunction {
             ((BaseFunction) targetFunction).setForcedNewTarget(forcedNewTarget);
             return;
         }
-        throw ScriptRuntime.typeError0("msg.not.ctor");
+        throw ScriptRuntime.typeErrorById("msg.not.ctor");
     }
 
     @Override
@@ -86,7 +97,7 @@ public class BoundFunction extends BaseFunction {
         if (targetFunction instanceof Function) {
             return ((Function) targetFunction).hasInstance(instance);
         }
-        throw ScriptRuntime.typeError0("msg.not.ctor");
+        throw ScriptRuntime.typeErrorById("msg.not.ctor");
     }
 
     @Override
@@ -99,11 +110,10 @@ public class BoundFunction extends BaseFunction {
         if (targetFunction instanceof BaseFunction) {
             return "bound " + ((BaseFunction) targetFunction).getFunctionName();
         }
-
         return "";
     }
 
-    private Object[] concat(Object[] first, Object[] second) {
+    private static Object[] concat(Object[] first, Object[] second) {
         Object[] args = new Object[first.length + second.length];
         System.arraycopy(first, 0, args, 0, first.length);
         System.arraycopy(second, 0, args, first.length, second.length);
@@ -111,6 +121,8 @@ public class BoundFunction extends BaseFunction {
     }
 
     static boolean equalObjectGraphs(BoundFunction f1, BoundFunction f2, EqualObjectGraphs eq) {
-        return eq.equalGraphs(f1.boundThis, f2.boundThis) && eq.equalGraphs(f1.targetFunction, f2.targetFunction) && eq.equalGraphs(f1.boundArgs, f2.boundArgs);
+        return eq.equalGraphs(f1.boundThis, f2.boundThis)
+                && eq.equalGraphs(f1.targetFunction, f2.targetFunction)
+                && eq.equalGraphs(f1.boundArgs, f2.boundArgs);
     }
 }

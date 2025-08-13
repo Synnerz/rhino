@@ -10,11 +10,10 @@ import org.mozilla.javascript.Node;
 import org.mozilla.javascript.Token;
 
 /**
- * Used for code generation.  During codegen, the AST is transformed
- * into an Intermediate Representation (IR) in which loops, ifs, switches
- * and other control-flow statements are rewritten as labeled jumps.
- * If the parser is set to IDE-mode, the resulting AST will not contain
- * any instances of this class.
+ * Used for code generation. During codegen, the AST is transformed into an Intermediate
+ * Representation (IR) in which loops, ifs, switches and other control-flow statements are rewritten
+ * as labeled jumps. If the parser is set to IDE-mode, the resulting AST will not contain any
+ * instances of this class.
  */
 public class Jump extends AstNode {
 
@@ -53,7 +52,7 @@ public class Jump extends AstNode {
     public void setJumpStatement(Jump jumpStatement) {
         if (type != Token.BREAK && type != Token.CONTINUE) codeBug();
         if (jumpStatement == null) codeBug();
-        if (this.jumpNode != null) codeBug(); //only once
+        if (this.jumpNode != null) codeBug(); // only once
         this.jumpNode = jumpStatement;
     }
 
@@ -65,7 +64,7 @@ public class Jump extends AstNode {
     public void setDefault(Node defaultTarget) {
         if (type != Token.SWITCH) codeBug();
         if (defaultTarget.getType() != Token.TARGET) codeBug();
-        if (target2 != null) codeBug(); //only once
+        if (target2 != null) codeBug(); // only once
         target2 = defaultTarget;
     }
 
@@ -77,7 +76,7 @@ public class Jump extends AstNode {
     public void setFinally(Node finallyTarget) {
         if (type != Token.TRY) codeBug();
         if (finallyTarget.getType() != Token.TARGET) codeBug();
-        if (target2 != null) codeBug(); //only once
+        if (target2 != null) codeBug(); // only once
         target2 = finallyTarget;
     }
 
@@ -89,7 +88,7 @@ public class Jump extends AstNode {
     public void setLoop(Jump loop) {
         if (type != Token.LABEL) codeBug();
         if (loop == null) codeBug();
-        if (jumpNode != null) codeBug(); //only once
+        if (jumpNode != null) codeBug(); // only once
         jumpNode = loop;
     }
 
@@ -101,13 +100,12 @@ public class Jump extends AstNode {
     public void setContinue(Node continueTarget) {
         if (type != Token.LOOP) codeBug();
         if (continueTarget.getType() != Token.TARGET) codeBug();
-        if (target2 != null) codeBug(); //only once
+        if (target2 != null) codeBug(); // only once
         target2 = continueTarget;
     }
 
     /**
-     * Jumps are only used directly during code generation, and do
-     * not support this interface.
+     * Jumps are only used directly during code generation, and do not support this interface.
      *
      * @throws UnsupportedOperationException
      */

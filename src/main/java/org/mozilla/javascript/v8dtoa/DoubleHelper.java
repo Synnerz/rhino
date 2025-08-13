@@ -88,21 +88,16 @@ public class DoubleHelper {
     }
 
     static boolean isNan(long d64) {
-        return ((d64 & kExponentMask) == kExponentMask) &&
-                ((d64 & kSignificandMask) != 0L);
+        return ((d64 & kExponentMask) == kExponentMask) && ((d64 & kSignificandMask) != 0L);
     }
-
 
     static boolean isInfinite(long d64) {
-        return ((d64 & kExponentMask) == kExponentMask) &&
-                ((d64 & kSignificandMask) == 0L);
+        return ((d64 & kExponentMask) == kExponentMask) && ((d64 & kSignificandMask) == 0L);
     }
-
 
     static int sign(long d64) {
         return (d64 & kSignMask) == 0L ? 1 : -1;
     }
-
 
     // Returns the two boundaries of first argument.
     // The bigger boundary (m_plus) is normalized. The lower boundary has the same
@@ -130,8 +125,7 @@ public class DoubleHelper {
         m_minus.setE(m_plus.e());
     }
 
-    private static final int kSignificandSize = 52;  // Excludes the hidden bit.
+    private static final int kSignificandSize = 52; // Excludes the hidden bit.
     private static final int kExponentBias = 0x3FF + kSignificandSize;
     private static final int kDenormalExponent = -kExponentBias + 1;
-
 }

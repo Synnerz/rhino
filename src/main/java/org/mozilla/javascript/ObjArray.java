@@ -12,14 +12,13 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
- * Implementation of resizable array with focus on minimizing memory usage by storing few initial array elements in object fields. Can also be used as a stack.
+ * Implementation of resizable array with focus on minimizing memory usage by storing few initial
+ * array elements in object fields. Can also be used as a stack.
  */
-
 public class ObjArray implements Serializable {
     private static final long serialVersionUID = 4174889037736658296L;
 
-    public ObjArray() {
-    }
+    public ObjArray() {}
 
     public final boolean isSealed() {
         return sealed;
@@ -100,7 +99,6 @@ public class ObjArray implements Serializable {
             default:
                 data[index - FIELDS_STORE_SIZE] = value;
         }
-
     }
 
     public int indexOf(Object obj) {
@@ -195,8 +193,7 @@ public class ObjArray implements Serializable {
                 tmp = f0;
                 f0 = value;
                 value = tmp;
-                /* fall through */
-            case 1:
+                /* fall through */ case 1:
                 if (N == 1) {
                     f1 = value;
                     break;
@@ -204,8 +201,7 @@ public class ObjArray implements Serializable {
                 tmp = f1;
                 f1 = value;
                 value = tmp;
-                /* fall through */
-            case 2:
+                /* fall through */ case 2:
                 if (N == 2) {
                     f2 = value;
                     break;
@@ -213,8 +209,7 @@ public class ObjArray implements Serializable {
                 tmp = f2;
                 f2 = value;
                 value = tmp;
-                /* fall through */
-            case 3:
+                /* fall through */ case 3:
                 if (N == 3) {
                     f3 = value;
                     break;
@@ -222,8 +217,7 @@ public class ObjArray implements Serializable {
                 tmp = f3;
                 f3 = value;
                 value = tmp;
-                /* fall through */
-            case 4:
+                /* fall through */ case 4:
                 if (N == 4) {
                     f4 = value;
                     break;
@@ -233,12 +227,14 @@ public class ObjArray implements Serializable {
                 value = tmp;
 
                 index = FIELDS_STORE_SIZE;
-                /* fall through */
-            default:
+                /* fall through */ default:
                 ensureCapacity(N + 1);
                 if (index != N) {
-                    System.arraycopy(data, index - FIELDS_STORE_SIZE,
-                            data, index - FIELDS_STORE_SIZE + 1,
+                    System.arraycopy(
+                            data,
+                            index - FIELDS_STORE_SIZE,
+                            data,
+                            index - FIELDS_STORE_SIZE + 1,
                             N - index);
                 }
                 data[index - FIELDS_STORE_SIZE] = value;
@@ -258,29 +254,25 @@ public class ObjArray implements Serializable {
                     break;
                 }
                 f0 = f1;
-                /* fall through */
-            case 1:
+                /* fall through */ case 1:
                 if (N == 1) {
                     f1 = null;
                     break;
                 }
                 f1 = f2;
-                /* fall through */
-            case 2:
+                /* fall through */ case 2:
                 if (N == 2) {
                     f2 = null;
                     break;
                 }
                 f2 = f3;
-                /* fall through */
-            case 3:
+                /* fall through */ case 3:
                 if (N == 3) {
                     f3 = null;
                     break;
                 }
                 f3 = f4;
-                /* fall through */
-            case 4:
+                /* fall through */ case 4:
                 if (N == 4) {
                     f4 = null;
                     break;
@@ -288,11 +280,13 @@ public class ObjArray implements Serializable {
                 f4 = data[0];
 
                 index = FIELDS_STORE_SIZE;
-                /* fall through */
-            default:
+                /* fall through */ default:
                 if (index != N) {
-                    System.arraycopy(data, index - FIELDS_STORE_SIZE + 1,
-                            data, index - FIELDS_STORE_SIZE,
+                    System.arraycopy(
+                            data,
+                            index - FIELDS_STORE_SIZE + 1,
+                            data,
+                            index - FIELDS_STORE_SIZE,
                             N - index);
                 }
                 data[N - FIELDS_STORE_SIZE] = null;
@@ -323,25 +317,18 @@ public class ObjArray implements Serializable {
         int N = size;
         switch (N) {
             default:
-                System.arraycopy(data, 0, array, offset + FIELDS_STORE_SIZE,
-                        N - FIELDS_STORE_SIZE);
-                /* fall through */
-            case 5:
+                System.arraycopy(data, 0, array, offset + FIELDS_STORE_SIZE, N - FIELDS_STORE_SIZE);
+                /* fall through */ case 5:
                 array[offset + 4] = f4;
-                /* fall through */
-            case 4:
+                /* fall through */ case 4:
                 array[offset + 3] = f3;
-                /* fall through */
-            case 3:
+                /* fall through */ case 3:
                 array[offset + 2] = f2;
-                /* fall through */
-            case 2:
+                /* fall through */ case 2:
                 array[offset + 1] = f1;
-                /* fall through */
-            case 1:
+                /* fall through */ case 1:
                 array[offset + 0] = f0;
-                /* fall through */
-            case 0:
+                /* fall through */ case 0:
                 break;
         }
     }
@@ -368,8 +355,7 @@ public class ObjArray implements Serializable {
                 }
                 Object[] tmp = new Object[alloc];
                 if (size > FIELDS_STORE_SIZE) {
-                    System.arraycopy(data, 0, tmp, 0,
-                            size - FIELDS_STORE_SIZE);
+                    System.arraycopy(data, 0, tmp, 0, size - FIELDS_STORE_SIZE);
                 }
                 data = tmp;
             }
@@ -399,8 +385,7 @@ public class ObjArray implements Serializable {
         }
     }
 
-    private void readObject(ObjectInputStream is)
-            throws IOException, ClassNotFoundException {
+    private void readObject(ObjectInputStream is) throws IOException, ClassNotFoundException {
         is.defaultReadObject(); // It reads size
         int N = size;
         if (N > FIELDS_STORE_SIZE) {

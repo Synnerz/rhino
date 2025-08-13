@@ -8,18 +8,15 @@ package org.mozilla.classfile;
 
 /**
  * This class provides opcode values expected by the JVM in Java class files.
- * <p>
- * It also provides tables for internal use by the ClassFileWriter.
+ *
+ * <p>It also provides tables for internal use by the ClassFileWriter.
  *
  * @author Roger Lawrence
  */
 public class ByteCode {
 
-    /**
-     * The byte opcodes defined by the Java Virtual Machine.
-     */
-    public static final int
-            NOP = 0x00,
+    /** The byte opcodes defined by the Java Virtual Machine. */
+    public static final int NOP = 0x00,
             ACONST_NULL = 0x01,
             ICONST_M1 = 0x02,
             ICONST_0 = 0x03,
@@ -222,15 +219,11 @@ public class ByteCode {
             GOTO_W = 0xC8,
             JSR_W = 0xC9,
             BREAKPOINT = 0xCA,
-
-    IMPDEP1 = 0xFE,
+            IMPDEP1 = 0xFE,
             IMPDEP2 = 0xFF;
 
-    /**
-     * Types for the NEWARRAY opcode.
-     */
-    public static final byte
-            T_BOOLEAN = 4,
+    /** Types for the NEWARRAY opcode. */
+    public static final byte T_BOOLEAN = 4,
             T_CHAR = 5,
             T_FLOAT = 6,
             T_DOUBLE = 7,
@@ -242,8 +235,7 @@ public class ByteCode {
     /*
      * Types for MethodHandle
      */
-    public static final byte
-            MH_GETFIELD = 1,
+    public static final byte MH_GETFIELD = 1,
             MH_GETSTATIC = 2,
             MH_PUTFIELD = 3,
             MH_PUTSTATIC = 4,

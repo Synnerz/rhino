@@ -6,13 +6,17 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.IdScriptableObject;
+import org.mozilla.javascript.ScriptRuntime;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
- * A NativeArrayBuffer is the backing buffer for a typed array. Used inside JavaScript code,
- * it implements the ArrayBuffer interface. Used directly from Java, it simply holds a byte array.
+ * A NativeArrayBuffer is the backing buffer for a typed array. Used inside JavaScript code, it
+ * implements the ArrayBuffer interface. Used directly from Java, it simply holds a byte array.
  */
-
 public class NativeArrayBuffer extends IdScriptableObject {
     private static final long serialVersionUID = 3110411773054879549L;
 
@@ -20,13 +24,21 @@ public class NativeArrayBuffer extends IdScriptableObject {
 
     private static final byte[] EMPTY_BUF = new byte[0];
 
-    public static final NativeArrayBuffer EMPTY_BUFFER = new NativeArrayBuffer();
-
-    byte[] buffer;
+    final byte[] buffer;
 
     @Override
     public String getClassName() {
         return CLASS_NAME;
+    }
+
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
     }
 
     public static void init(Context cx, Scriptable scope, boolean sealed) {
@@ -34,27 +46,28 @@ public class NativeArrayBuffer extends IdScriptableObject {
         na.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
     }
 
-    /**
-     * Create an empty buffer.
-     */
+    /** Create an empty buffer. */
     public NativeArrayBuffer() {
         buffer = EMPTY_BUF;
     }
 
-    /**
-     * Create a buffer of the specified length in bytes.
-     */
+    /** Create a buffer of the specified length in bytes. */
     public NativeArrayBuffer(double len) {
         if (len >= Integer.MAX_VALUE) {
-            throw ScriptRuntime.constructError("RangeError", "length parameter (" + len + ") is too large ");
+            throw ScriptRuntime.rangeError("length parameter (" + len + ") is too large ");
         }
         if (len == Double.NEGATIVE_INFINITY) {
-            throw ScriptRuntime.constructError("RangeError", "Negative array length " + len);
+            throw ScriptRuntime.rangeError("Negative array length " + len);
+        }
+
+        // support rounding
+        if (len <= -1) {
+            throw ScriptRuntime.rangeError("Negative array length " + len);
         }
 
         int intLen = ScriptRuntime.toInt32(len);
         if (intLen < 0) {
-            throw ScriptRuntime.constructError("RangeError", "Negative array length " + len);
+            throw ScriptRuntime.rangeError("Negative array length " + len);
         }
         if (intLen == 0) {
             buffer = EMPTY_BUF;
@@ -63,20 +76,14 @@ public class NativeArrayBuffer extends IdScriptableObject {
         }
     }
 
-    private NativeArrayBuffer(byte[] buffer) {
-        this.buffer = buffer;
-    }
-
-    /**
-     * Get the number of bytes in the buffer.
-     */
+    /** Get the number of bytes in the buffer. */
     public int getLength() {
         return buffer.length;
     }
 
     /**
-     * Return the actual bytes that back the buffer. This is a reference to the real buffer,
-     * so changes to bytes here will be reflected in the actual object and all its views.
+     * Return the actual bytes that back the buffer. This is a reference to the real buffer, so
+     * changes to bytes here will be reflected in the actual object and all its views.
      */
     public byte[] getBuffer() {
         return buffer;
@@ -87,9 +94,9 @@ public class NativeArrayBuffer extends IdScriptableObject {
     /**
      * Return a new buffer that represents a slice of this buffer's content, starting at position
      * "start" and ending at position "end". Both values will be "clamped" as per the JavaScript
-     * spec so that invalid values may be passed and will be adjusted up or down accordingly.
-     * This method will return a new buffer that contains a copy of the original buffer. Changes
-     * there will not affect the content of the buffer.
+     * spec so that invalid values may be passed and will be adjusted up or down accordingly. This
+     * method will return a new buffer that contains a copy of the original buffer. Changes there
+     * will not affect the content of the buffer.
      *
      * @param s the position where the new buffer will start
      * @param e the position where it will end
@@ -97,8 +104,11 @@ public class NativeArrayBuffer extends IdScriptableObject {
     public NativeArrayBuffer slice(double s, double e) {
         // Handle negative start as relative to start
         // Clamp as per the spec to between 0 and length
-        int end = ScriptRuntime.toInt32(Math.max(0, Math.min(buffer.length, (e < 0 ? buffer.length + e : e))));
-        int start = ScriptRuntime.toInt32(Math.min(end, Math.max(0, (s < 0 ? buffer.length + s : s))));
+        int end =
+                ScriptRuntime.toInt32(
+                        Math.max(0, Math.min(buffer.length, (e < 0 ? buffer.length + e : e))));
+        int start =
+                ScriptRuntime.toInt32(Math.min(end, Math.max(0, (s < 0 ? buffer.length + s : s))));
         int len = end - start;
 
         NativeArrayBuffer newBuf = new NativeArrayBuffer(len);
@@ -106,30 +116,21 @@ public class NativeArrayBuffer extends IdScriptableObject {
         return newBuf;
     }
 
-    public NativeArrayBuffer transfer() {
-        NativeArrayBuffer newBuf = new NativeArrayBuffer(this.buffer);
-        this.buffer = EMPTY_BUF;
-        return newBuf;
-    }
-
-
-
     // Function-calling dispatcher
 
     @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+    public Object execIdCall(
+            IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (!f.hasTag(CLASS_NAME)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
         }
         int id = f.methodId();
         switch (id) {
             case ConstructorId_isView:
-                return (isArg(args, 0) && (args[0] instanceof NativeArrayBufferView));
+                return Boolean.valueOf(
+                        (isArg(args, 0) && (args[0] instanceof NativeArrayBufferView)));
 
             case Id_constructor:
-                if (thisObj != null) {
-                    throw ScriptRuntime.typeError1("msg.builtin.no.new", "ArrayBuffer");
-                }
                 double length = isArg(args, 0) ? ScriptRuntime.toNumber(args[0]) : 0;
                 return new NativeArrayBuffer(length);
 
@@ -138,19 +139,12 @@ public class NativeArrayBuffer extends IdScriptableObject {
                 double start = isArg(args, 0) ? ScriptRuntime.toNumber(args[0]) : 0;
                 double end = isArg(args, 1) ? ScriptRuntime.toNumber(args[1]) : self.buffer.length;
                 return self.slice(start, end);
-
-            case Id_transfer:
-                self = realThis(thisObj, f);
-                return self.transfer();
         }
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
     private static NativeArrayBuffer realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeArrayBuffer))
-            throw incompatibleCallError(f);
-        return (NativeArrayBuffer) unwrappedThis;
+        return ensureType(thisObj, NativeArrayBuffer.class, f);
     }
 
     private static boolean isArg(Object[] args, int i) {
@@ -167,12 +161,8 @@ public class NativeArrayBuffer extends IdScriptableObject {
                 s = "constructor";
                 break;
             case Id_slice:
-                arity = 1;
+                arity = 2;
                 s = "slice";
-                break;
-            case Id_transfer:
-                arity = 0;
-                s = "transfer";
                 break;
             default:
                 throw new IllegalArgumentException(String.valueOf(id));
@@ -180,32 +170,25 @@ public class NativeArrayBuffer extends IdScriptableObject {
         initPrototypeMethod(CLASS_NAME, id, s, arity);
     }
 
-// #string_id_map#
-
     @Override
     protected int findPrototypeId(String s) {
         int id;
-// #generated# Last update: 2019-12-22 21:26:25 EST
-        L0: { id = 0; String X = null;
-            int s_length = s.length();
-            if (s_length==5) { X="slice";id=Id_slice; }
-            else if (s_length==8) { X="transfer";id=Id_transfer; }
-            else if (s_length==11) { X="constructor";id=Id_constructor; }
-            if (X!=null && X!=s && !X.equals(s)) id = 0;
-            break L0;
+        switch (s) {
+            case "constructor":
+                id = Id_constructor;
+                break;
+            case "slice":
+                id = Id_slice;
+                break;
+            default:
+                id = 0;
+                break;
         }
-// #/generated#
         return id;
     }
 
     // Table of all functions
-    private static final int
-            Id_constructor = 1,
-            Id_slice = 2,
-            Id_transfer = 3,
-            MAX_PROTOTYPE_ID = Id_transfer;
-
-// #/string_id_map#
+    private static final int Id_constructor = 1, Id_slice = 2, MAX_PROTOTYPE_ID = Id_slice;
 
     // Constructor (aka static) functions here
 
@@ -214,7 +197,6 @@ public class NativeArrayBuffer extends IdScriptableObject {
     @Override
     protected void fillConstructorProperties(IdFunctionObject ctor) {
         addIdFunctionProperty(ctor, CLASS_NAME, ConstructorId_isView, "isView", 1);
-        addCtorSpecies(ctor);
     }
 
     // Properties here
@@ -243,13 +225,11 @@ public class NativeArrayBuffer extends IdScriptableObject {
     @Override
     protected int findInstanceIdInfo(String s) {
         if ("byteLength".equals(s)) {
-            return instanceIdInfo(NOT_WRITABLE | NOT_CONFIGURABLE, Id_byteLength);
+            return instanceIdInfo(READONLY | PERMANENT, Id_byteLength);
         }
         return super.findInstanceIdInfo(s);
     }
 
     // Table of all properties
-    private static final int
-            Id_byteLength = 1,
-            MAX_INSTANCE_ID = Id_byteLength;
+    private static final int Id_byteLength = 1, MAX_INSTANCE_ID = Id_byteLength;
 }

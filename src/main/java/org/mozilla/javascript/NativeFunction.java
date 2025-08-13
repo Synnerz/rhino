@@ -9,21 +9,26 @@ package org.mozilla.javascript;
 import org.mozilla.javascript.debug.DebuggableScript;
 
 /**
- * This class implements the Function native object.
- * See ECMA 15.3.
+ * This class implements the Function native object. See ECMA 15.3.
  *
  * @author Norris Boyd
  */
 public abstract class NativeFunction extends BaseFunction {
+
     private static final long serialVersionUID = 8713897114082216401L;
 
     public final void initScriptFunction(Context cx, Scriptable scope) {
-        ScriptRuntime.setFunctionProtoAndParent(this, scope);
+        initScriptFunction(cx, scope, isGeneratorFunction());
+    }
+
+    public final void initScriptFunction(
+            Context cx, Scriptable scope, boolean es6GeneratorFunction) {
+        ScriptRuntime.setFunctionProtoAndParent(this, cx, scope, es6GeneratorFunction);
     }
 
     /**
      * @param indent How much to indent the decompiled result
-     * @param flags  Flags specifying format of decompilation output
+     * @param flags Flags specifying format of decompilation output
      */
     @Override
     final String decompile(int indent, int flags) {
@@ -36,21 +41,18 @@ public abstract class NativeFunction extends BaseFunction {
         return Decompiler.decompile(encodedSource, flags, properties);
     }
 
-    public boolean hasRest() {
-        return false;
-    }
-
     @Override
     public int getLength() {
+        int paramCount = getParamCount();
         if (getLanguageVersion() != Context.VERSION_1_2) {
-            return getParamCount();
+            return paramCount;
         }
         Context cx = Context.getContext();
         NativeCall activation = ScriptRuntime.findFunctionActivation(cx, this);
         if (activation == null) {
-            return getParamCount();
+            return paramCount;
         }
-        return activation.effectiveArgs.length;
+        return activation.originalArgs.length;
     }
 
     @Override
@@ -59,18 +61,15 @@ public abstract class NativeFunction extends BaseFunction {
     }
 
     /**
-     * @deprecated Use {@link BaseFunction#getFunctionName()} instead.
-     * For backwards compatibility keep an old method name used by
-     * Batik and possibly others.
+     * @deprecated Use {@link BaseFunction#getFunctionName()} instead. For backwards compatibility
+     *     keep an old method name used by Batik and possibly others.
      */
     @Deprecated
     public String jsGet_name() {
         return getFunctionName();
     }
 
-    /**
-     * Get encoded source string.
-     */
+    /** Get encoded source string. */
     public String getEncodedSource() {
         return null;
     }
@@ -82,44 +81,36 @@ public abstract class NativeFunction extends BaseFunction {
     /**
      * Resume execution of a suspended generator.
      *
-     * @param cx        The current context
-     * @param scope     Scope for the parent generator function
+     * @param cx The current context
+     * @param scope Scope for the parent generator function
      * @param operation The resumption operation (next, send, etc.. )
-     * @param state     The generator state (has locals, stack, etc.)
-     * @param value     The return value of yield (if required).
+     * @param state The generator state (has locals, stack, etc.)
+     * @param value The return value of yield (if required).
      * @return The next yielded value (if any)
      */
-    public Object resumeGenerator(Context cx, Scriptable scope,
-                                  int operation, Object state, Object value) {
+    public Object resumeGenerator(
+            Context cx, Scriptable scope, int operation, Object state, Object value) {
         throw new EvaluatorException("resumeGenerator() not implemented");
     }
 
-
     protected abstract int getLanguageVersion();
 
-    /**
-     * Get number of declared parameters. It should be 0 for scripts.
-     */
+    /** Get number of declared parameters. It should be 0 for scripts. */
     protected abstract int getParamCount();
 
-    /**
-     * Get number of declared parameters and variables defined through var
-     * statements.
-     */
+    /** Get number of declared parameters and variables defined through var statements. */
     protected abstract int getParamAndVarCount();
 
     /**
-     * Get parameter or variable name.
-     * If <code>index &lt; {@link #getParamCount()}</code>, then return the name of the
-     * corresponding parameter. Otherwise return the name of variable.
+     * Get parameter or variable name. If <code>index &lt; {@link #getParamCount()}</code>, then
+     * return the name of the corresponding parameter. Otherwise return the name of variable.
      */
     protected abstract String getParamOrVarName(int index);
 
     /**
-     * Get parameter or variable const-ness.
-     * If <code>index &lt; {@link #getParamCount()}</code>, then return the const-ness
-     * of the corresponding parameter. Otherwise return whether the variable is
-     * const.
+     * Get parameter or variable const-ness. If <code>index &lt; {@link #getParamCount()}</code>,
+     * then return the const-ness of the corresponding parameter. Otherwise return whether the
+     * variable is const.
      */
     protected boolean getParamOrVarConst(int index) {
         // By default return false to preserve compatibility with existing
@@ -127,7 +118,4 @@ public abstract class NativeFunction extends BaseFunction {
         // from earlier Rhino versions. See Bugzilla #396117.
         return false;
     }
-
-    protected abstract boolean isVarLexical(int index);
 }
-

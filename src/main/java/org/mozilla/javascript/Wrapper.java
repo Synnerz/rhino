@@ -9,12 +9,10 @@
 package org.mozilla.javascript;
 
 /**
- * Objects that can wrap other values for reflection in the JS environment
- * will implement Wrapper.
- * <p>
- * Wrapper defines a single method that can be called to unwrap the object.
+ * Objects that can wrap other values for reflection in the JS environment will implement Wrapper.
+ *
+ * <p>Wrapper defines a single method that can be called to unwrap the object.
  */
-
 public interface Wrapper {
 
     /**
@@ -22,5 +20,5 @@ public interface Wrapper {
      *
      * @return a wrapped value
      */
-    Object unwrap();
+    public Object unwrap();
 }

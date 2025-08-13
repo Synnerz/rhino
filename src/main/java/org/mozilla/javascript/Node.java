@@ -6,10 +6,16 @@
 
 package org.mozilla.javascript;
 
-import org.mozilla.javascript.ast.*;
-
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import org.mozilla.javascript.ast.Comment;
+import org.mozilla.javascript.ast.FunctionNode;
+import org.mozilla.javascript.ast.Jump;
+import org.mozilla.javascript.ast.Name;
+import org.mozilla.javascript.ast.NumberLiteral;
+import org.mozilla.javascript.ast.Scope;
+import org.mozilla.javascript.ast.ScriptNode;
 
 /**
  * This class implements the root of the intermediate representation.
@@ -18,8 +24,7 @@ import java.util.NoSuchElementException;
  * @author Mike McCabe
  */
 public class Node implements Iterable<Node> {
-    public static final int
-            FUNCTION_PROP = 1,
+    public static final int FUNCTION_PROP = 1,
             LOCAL_PROP = 2,
             LOCAL_BLOCK_PROP = 3,
             REGEXP_PROP = 4,
@@ -55,37 +60,28 @@ public class Node implements Iterable<Node> {
             DESTRUCTURING_PARAMS = 23,
             JSDOC_PROP = 24,
             EXPRESSION_CLOSURE_PROP = 25, // JS 1.8 expression closure pseudo-return
-            DESTRUCTURING_SHORTHAND = 26, // JS 1.8 destructuring shorthand
+            SHORTHAND_PROPERTY_NAME = 26,
             ARROW_FUNCTION_PROP = 27,
-            COMPUTED_PROP = 28,
-            SPREAD_PROP = 29,
-            CHAINING_PROP = 30,
-            SUPER_PROP = 31,
-            SPREAD_IDS_PROP = 32,
-            DECORATOR_PROP = 33,
-            PRIVATE_ACCESS_PROP = 34,
-            EXPORT_PROP = 35,
-            INITIALIZE_PROP = 36,
-            PARTIAL_PROP = 37,
-            CONST_DECL_PROP = 38;
+            TEMPLATE_LITERAL_PROP = 28,
+            TRAILING_COMMA = 30,
+            OBJECT_LITERAL_DESTRUCTURING = 31,
+            OPTIONAL_CHAINING = 32,
+            SUPER_PROP = 33,
+            EXPORT_PROP = 34,
+            SPREAD_PROP = 35,
+            LAST_PROP = SPREAD_PROP;
 
     // values of ISNUMBER_PROP to specify
     // which of the children are Number types
-    public static final int
-            BOTH = 0,
-            LEFT = 1,
-            RIGHT = 2;
-
-    public static final int    // values for SPECIALCALL_PROP
+    public static final int BOTH = 0, LEFT = 1, RIGHT = 2;
+    public static final int // values for SPECIALCALL_PROP
             NON_SPECIALCALL = 0,
             SPECIALCALL_EVAL = 1,
             SPECIALCALL_WITH = 2;
-
-    public static final int   // flags for INCRDECR_PROP
+    public static final int // flags for INCRDECR_PROP
             DECR_FLAG = 0x1,
             POST_FLAG = 0x2;
-
-    public static final int   // flags for MEMBER_TYPE_PROP
+    public static final int // flags for MEMBER_TYPE_PROP
             PROPERTY_FLAG = 0x1, // property access: element is valid name
             ATTRIBUTE_FLAG = 0x2, // x.@y or x..@y
             DESCENDANTS_FLAG = 0x4; // x..y or x..@i
@@ -124,24 +120,24 @@ public class Node implements Iterable<Node> {
         right.next = null;
     }
 
-    public Node(int nodeType, int line) {
+    public Node(int nodeType, int line, int column) {
         type = nodeType;
-        lineno = line;
+        setLineColumnNumber(line, column);
     }
 
-    public Node(int nodeType, Node child, int line) {
+    public Node(int nodeType, Node child, int line, int column) {
         this(nodeType, child);
-        lineno = line;
+        setLineColumnNumber(line, column);
     }
 
-    public Node(int nodeType, Node left, Node right, int line) {
+    public Node(int nodeType, Node left, Node right, int line, int column) {
         this(nodeType, left, right);
-        lineno = line;
+        setLineColumnNumber(line, column);
     }
 
-    public Node(int nodeType, Node left, Node mid, Node right, int line) {
+    public Node(int nodeType, Node left, Node mid, Node right, int line, int column) {
         this(nodeType, left, mid, right);
-        lineno = line;
+        setLineColumnNumber(line, column);
     }
 
     public static Node newNumber(double number) {
@@ -150,11 +146,11 @@ public class Node implements Iterable<Node> {
         return n;
     }
 
-    public static Node newString(String str) {
+    public static Name newString(String str) {
         return newString(Token.STRING, str);
     }
 
-    public static Node newString(int type, String str) {
+    public static Name newString(int type, String str) {
         Name name = new Name();
         name.setIdentifier(str);
         name.setType(type);
@@ -165,9 +161,7 @@ public class Node implements Iterable<Node> {
         return type;
     }
 
-    /**
-     * Sets the node type and returns this node.
-     */
+    /** Sets the node type and returns this node. */
     public Node setType(int type) {
         this.type = type;
         return this;
@@ -176,8 +170,7 @@ public class Node implements Iterable<Node> {
     /**
      * Gets the JsDoc comment string attached to this node.
      *
-     * @return the comment string or {@code null} if no JsDoc is attached to
-     * this node
+     * @return the comment string or {@code null} if no JsDoc is attached to this node
      */
     public String getJsDoc() {
         Comment comment = getJsDocNode();
@@ -190,16 +183,13 @@ public class Node implements Iterable<Node> {
     /**
      * Gets the JsDoc Comment object attached to this node.
      *
-     * @return the Comment or {@code null} if no JsDoc is attached to
-     * this node
+     * @return the Comment or {@code null} if no JsDoc is attached to this node
      */
     public Comment getJsDocNode() {
         return (Comment) getProp(JSDOC_PROP);
     }
 
-    /**
-     * Sets the JsDoc comment string attached to this node.
-     */
+    /** Sets the JsDoc comment string attached to this node. */
     public void setJsDocNode(Comment jsdocNode) {
         putProp(JSDOC_PROP, jsdocNode);
     }
@@ -221,13 +211,11 @@ public class Node implements Iterable<Node> {
     }
 
     public Node getChildBefore(Node child) {
-        if (child == first)
-            return null;
+        if (child == first) return null;
         Node n = first;
         while (n.next != child) {
             n = n.next;
-            if (n == null)
-                throw new RuntimeException("node is not a child");
+            if (n == null) throw new RuntimeException("node is not a child");
         }
         return n;
     }
@@ -277,13 +265,10 @@ public class Node implements Iterable<Node> {
         }
     }
 
-    /**
-     * Add 'child' before 'node'.
-     */
+    /** Add 'child' before 'node'. */
     public void addChildBefore(Node newChild, Node node) {
         if (newChild.next != null)
-            throw new RuntimeException(
-                    "newChild had siblings in addChildBefore");
+            throw new RuntimeException("newChild had siblings in addChildBefore");
         if (first == node) {
             newChild.next = first;
             first = newChild;
@@ -293,30 +278,25 @@ public class Node implements Iterable<Node> {
         addChildAfter(newChild, prev);
     }
 
-    /**
-     * Add 'child' after 'node'.
-     */
+    /** Add 'child' after 'node'. */
     public void addChildAfter(Node newChild, Node node) {
         if (newChild.next != null)
-            throw new RuntimeException(
-                    "newChild had siblings in addChildAfter");
+            throw new RuntimeException("newChild had siblings in addChildAfter");
         newChild.next = node.next;
         node.next = newChild;
-        if (last == node)
-            last = newChild;
+        if (last == node) last = newChild;
     }
 
     public void removeChild(Node child) {
         Node prev = getChildBefore(child);
-        if (prev == null)
-            first = first.next;
-        else
-            prev.next = child.next;
+        if (prev == null) first = first.next;
+        else prev.next = child.next;
         if (child == last) last = prev;
         child.next = null;
     }
 
     public void replaceChild(Node child, Node newChild) {
+        if (child == newChild) return;
         newChild.next = child.next;
         if (child == first) {
             first = newChild;
@@ -324,8 +304,7 @@ public class Node implements Iterable<Node> {
             Node prev = getChildBefore(child);
             prev.next = newChild;
         }
-        if (child == last)
-            last = newChild;
+        if (child == last) last = newChild;
         child.next = null;
     }
 
@@ -333,8 +312,7 @@ public class Node implements Iterable<Node> {
         Node child = prevChild.next;
         newChild.next = child.next;
         prevChild.next = newChild;
-        if (child == last)
-            last = newChild;
+        if (child == last) last = newChild;
         child.next = null;
     }
 
@@ -345,12 +323,12 @@ public class Node implements Iterable<Node> {
     private static final Node NOT_SET = new Node(Token.ERROR);
 
     /**
-     * Iterates over the children of this Node.  Supports child removal.  Not
-     * thread-safe.  If anyone changes the child list before the iterator
-     * finishes, the results are undefined and probably bad.
+     * Iterates over the children of this Node. Supports child removal. Not thread-safe. If anyone
+     * changes the child list before the iterator finishes, the results are undefined and probably
+     * bad.
      */
     public class NodeIterator implements Iterator<Node> {
-        private Node cursor;  // points to node to be returned next
+        private Node cursor; // points to node to be returned next
         private Node prev = NOT_SET;
         private Node prev2;
         private boolean removed = false;
@@ -382,8 +360,7 @@ public class Node implements Iterable<Node> {
                 throw new IllegalStateException("next() has not been called");
             }
             if (removed) {
-                throw new IllegalStateException(
-                        "remove() already called for current element");
+                throw new IllegalStateException("remove() already called for current element");
             }
             if (prev == first) {
                 first = prev.next;
@@ -396,16 +373,14 @@ public class Node implements Iterable<Node> {
         }
     }
 
-    /**
-     * Returns an {@link java.util.Iterator} over the node's children.
-     */
+    /** Returns an {@link java.util.Iterator} over the node's children. */
     @Override
     public Iterator<Node> iterator() {
         return new NodeIterator();
     }
 
-    private static String propToString(int propType) {
-        if (Token.printTrees || Context.getContext().hasFeature(Context.EMIT_DEBUG_OUTPUT)) {
+    private static final String propToString(int propType) {
+        if (Token.printTrees) {
             // If Context.printTrees is false, the compiler
             // can remove all these strings.
             switch (propType) {
@@ -457,32 +432,23 @@ public class Node implements Iterable<Node> {
                     return "destructuring_names";
                 case DESTRUCTURING_PARAMS:
                     return "destructuring_params";
-                case COMPUTED_PROP:
-                    return "computed_prop";
-                case SPREAD_PROP:
-                    return "spread_prop";
-                case CHAINING_PROP:
-                    return "chaining_prop";
                 case EXPRESSION_CLOSURE_PROP:
-                    return "expression_closure";
-                case DESTRUCTURING_SHORTHAND:
-                    return "destructuring_shorthand";
+                    return "expression_closure_prop";
+                case TEMPLATE_LITERAL_PROP:
+                    return "template_literal";
+                case TRAILING_COMMA:
+                    return "trailing comma";
+                case OPTIONAL_CHAINING:
+                    return "optional_chaining";
                 case SUPER_PROP:
                     return "super_prop";
-                case SPREAD_IDS_PROP:
-                    return "spread_ids";
-                case DECORATOR_PROP:
-                    return "decorator";
-                case PRIVATE_ACCESS_PROP:
-                    return "private_access";
                 case EXPORT_PROP:
                     return "export_prop";
-                case INITIALIZE_PROP:
-                    return "initialize_prop";
-                case PARTIAL_PROP:
-                    return "partial_prop";
+                case SPREAD_PROP:
+                    return "spread_prop";
+
                 default:
-                    throw Kit.codeBug();
+                    Kit.codeBug();
             }
         }
         return null;
@@ -528,12 +494,10 @@ public class Node implements Iterable<Node> {
 
     public Object getProp(int propType) {
         PropListItem item = lookupProperty(propType);
-        return item == null ? null : item.objectValue;
-    }
-
-    public Object getProp(int propType, Object defaultValue) {
-        PropListItem item = lookupProperty(propType);
-        return item == null ? defaultValue : item.objectValue;
+        if (item == null) {
+            return null;
+        }
+        return item.objectValue;
     }
 
     public int getIntProp(int propType, int defaultValue) {
@@ -575,13 +539,17 @@ public class Node implements Iterable<Node> {
         return lineno;
     }
 
+    // TODO: Should deprecate.
     public void setLineno(int lineno) {
         this.lineno = lineno;
     }
 
-    /**
-     * Can only be called when <code>getType() == Token.NUMBER</code>
-     */
+    public void setLineColumnNumber(int lineno, int column) {
+        this.lineno = lineno;
+        this.column = column;
+    }
+
+    /** Can only be called when <code>getType() == Token.NUMBER</code> */
     public final double getDouble() {
         return ((NumberLiteral) this).getNumber();
     }
@@ -590,43 +558,38 @@ public class Node implements Iterable<Node> {
         ((NumberLiteral) this).setNumber(number);
     }
 
-    /**
-     * Can only be called when node has String context.
-     */
+    /** Can only be called when <code>getType() == Token.BIGINT</code> */
+    public BigInteger getBigInt() {
+        throw new UnsupportedOperationException("Can only be called when Token.BIGINT");
+    }
+
+    public void setBigInt(BigInteger bigInt) {
+        throw new UnsupportedOperationException("Can only be called when Token.BIGINT");
+    }
+
+    /** Can only be called when node has String context. */
     public final String getString() {
         return ((Name) this).getIdentifier();
     }
 
-    /**
-     * Can only be called when node has String context.
-     */
+    /** Can only be called when node has String context. */
     public final void setString(String s) {
         if (s == null) Kit.codeBug();
         ((Name) this).setIdentifier(s);
     }
 
-    /**
-     * Can only be called when node has String context.
-     */
+    /** Can only be called when node has String context. */
     public Scope getScope() {
-        if (this instanceof Name) {
-            return ((Name) this).getScope();
-        }
-
-        throw Kit.codeBug();
+        return ((Name) this).getScope();
     }
 
-    /**
-     * Can only be called when node has String context.
-     */
+    /** Can only be called when node has String context. */
     public void setScope(Scope s) {
-        if (s == null) throw Kit.codeBug();
-
-        if (this instanceof Name) {
-            this.setScope(s);
-        } else {
+        if (s == null) Kit.codeBug();
+        if (!(this instanceof Name)) {
             throw Kit.codeBug();
         }
+        ((Name) this).setScope(s);
     }
 
     public static Node newTarget() {
@@ -634,90 +597,85 @@ public class Node implements Iterable<Node> {
     }
 
     public final int labelId() {
-        if (type != Token.TARGET && type != Token.YIELD) Kit.codeBug();
+        if ((type != Token.TARGET) && (type != Token.YIELD) && (type != Token.YIELD_STAR)) {
+            Kit.codeBug();
+        }
         return getIntProp(LABEL_ID_PROP, -1);
     }
 
     public void labelId(int labelId) {
-        if (type != Token.TARGET && type != Token.YIELD) Kit.codeBug();
+        if ((type != Token.TARGET) && (type != Token.YIELD) && (type != Token.YIELD_STAR)) {
+            Kit.codeBug();
+        }
         putIntProp(LABEL_ID_PROP, labelId);
     }
 
-
     /**
-     * Does consistent-return analysis on the function body when strict mode is
-     * enabled.
+     * Does consistent-return analysis on the function body when strict mode is enabled.
      *
-     *   function (x) { return (x+1) }
-     * is ok, but
-     *   function (x) { if (x &lt; 0) return (x+1); }
-     * is not becuase the function can potentially return a value when the
-     * condition is satisfied and if not, the function does not explicitly
-     * return value.
+     * <p>function (x) { return (x+1) } is ok, but function (x) { if (x &lt; 0) return (x+1); } is
+     * not becuase the function can potentially return a value when the condition is satisfied and
+     * if not, the function does not explicitly return value.
      *
-     * This extends to checking mismatches such as "return" and "return <value>"
-     * used in the same function. Warnings are not emitted if inconsistent
-     * returns exist in code that can be statically shown to be unreachable.
-     * Ex.
+     * <p>This extends to checking mismatches such as "return" and "return <value>" used in the same
+     * function. Warnings are not emitted if inconsistent returns exist in code that can be
+     * statically shown to be unreachable. Ex.
+     *
      * <pre>function (x) { while (true) { ... if (..) { return value } ... } }
      * </pre>
-     * emits no warning. However if the loop had a break statement, then a
-     * warning would be emitted.
      *
-     * The consistency analysis looks at control structures such as loops, ifs,
-     * switch, try-catch-finally blocks, examines the reachable code paths and
-     * warns the user about an inconsistent set of termination possibilities.
+     * emits no warning. However if the loop had a break statement, then a warning would be emitted.
      *
-     * Caveat: Since the parser flattens many control structures into almost
-     * straight-line code with gotos, it makes such analysis hard. Hence this
-     * analyser is written to taken advantage of patterns of code generated by
-     * the parser (for loops, try blocks and such) and does not do a full
-     * control flow analysis of the gotos and break/continue statements.
-     * Future changes to the parser will affect this analysis.
+     * <p>The consistency analysis looks at control structures such as loops, ifs, switch,
+     * try-catch-finally blocks, examines the reachable code paths and warns the user about an
+     * inconsistent set of termination possibilities.
+     *
+     * <p>Caveat: Since the parser flattens many control structures into almost straight-line code
+     * with gotos, it makes such analysis hard. Hence this analyser is written to taken advantage of
+     * patterns of code generated by the parser (for loops, try blocks and such) and does not do a
+     * full control flow analysis of the gotos and break/continue statements. Future changes to the
+     * parser will affect this analysis.
      */
 
     /**
-     * These flags enumerate the possible ways a statement/function can
-     * terminate. These flags are used by endCheck() and by the Parser to
-     * detect inconsistent return usage.
-     * <p>
-     * END_UNREACHED is reserved for code paths that are assumed to always be
-     * able to execute (example: throw, continue)
-     * <p>
-     * END_DROPS_OFF indicates if the statement can transfer control to the
-     * next one. Statement such as return dont. A compound statement may have
-     * some branch that drops off control to the next statement.
-     * <p>
-     * END_RETURNS indicates that the statement can return (without arguments)
-     * END_RETURNS_VALUE indicates that the statement can return a value.
-     * <p>
-     * A compound statement such as
-     * if (condition) {
-     * return value;
-     * }
-     * Will be detected as (END_DROPS_OFF | END_RETURN_VALUE) by endCheck()
+     * These flags enumerate the possible ways a statement/function can terminate. These flags are
+     * used by endCheck() and by the Parser to detect inconsistent return usage.
+     *
+     * <p>END_UNREACHED is reserved for code paths that are assumed to always be able to execute
+     * (example: throw, continue)
+     *
+     * <p>END_DROPS_OFF indicates if the statement can transfer control to the next one. Statement
+     * such as return dont. A compound statement may have some branch that drops off control to the
+     * next statement.
+     *
+     * <p>END_RETURNS indicates that the statement can return (without arguments) END_RETURNS_VALUE
+     * indicates that the statement can return a value.
+     *
+     * <p>A compound statement such as if (condition) { return value; } Will be detected as
+     * (END_DROPS_OFF | END_RETURN_VALUE) by endCheck()
      */
     public static final int END_UNREACHED = 0;
+
     public static final int END_DROPS_OFF = 1;
     public static final int END_RETURNS = 2;
     public static final int END_RETURNS_VALUE = 4;
     public static final int END_YIELDS = 8;
 
     /**
-     * Checks that every return usage in a function body is consistent with the
-     * requirements of strict-mode.
+     * Checks that every return usage in a function body is consistent with the requirements of
+     * strict-mode.
      *
      * @return true if the function satisfies strict mode requirement.
      */
     public boolean hasConsistentReturnUsage() {
         int n = endCheck();
-        return (n & END_RETURNS_VALUE) == 0 ||
-                (n & (END_DROPS_OFF | END_RETURNS | END_YIELDS)) == 0;
+        return (n & END_RETURNS_VALUE) == 0
+                || (n & (END_DROPS_OFF | END_RETURNS | END_YIELDS)) == 0;
     }
 
     /**
-     * Returns in the then and else blocks must be consistent with each other.
-     * If there is no else block, then the return statement can fall through.
+     * Returns in the then and else blocks must be consistent with each other. If there is no else
+     * block, then the return statement can fall through.
      *
      * @return logical OR of END_* flags
      */
@@ -730,19 +688,16 @@ public class Node implements Iterable<Node> {
 
         rv = th.endCheck();
 
-        if (el != null)
-            rv |= el.endCheck();
-        else
-            rv |= END_DROPS_OFF;
+        if (el != null) rv |= el.endCheck();
+        else rv |= END_DROPS_OFF;
 
         return rv;
     }
 
     /**
-     * Consistency of return statements is checked between the case statements.
-     * If there is no default, then the switch can fall through. If there is a
-     * default,we check to see if all code paths in the default return or if
-     * there is a code path that can fall through.
+     * Consistency of return statements is checked between the case statements. If there is no
+     * default, then the switch can fall through. If there is a default,we check to see if all code
+     * paths in the default return or if there is a code path that can fall through.
      *
      * @return logical OR of END_* flags
      */
@@ -750,36 +705,35 @@ public class Node implements Iterable<Node> {
         int rv = END_UNREACHED;
 
         // examine the cases
-//         for (n = first.next; n != null; n = n.next)
-//         {
-//             if (n.type == Token.CASE) {
-//                 rv |= ((Jump)n).target.endCheck();
-//             } else
-//                 break;
-//         }
+        //         for (n = first.next; n != null; n = n.next)
+        //         {
+        //             if (n.type == Token.CASE) {
+        //                 rv |= ((Jump)n).target.endCheck();
+        //             } else
+        //                 break;
+        //         }
 
-//         // we don't care how the cases drop into each other
-//         rv &= ~END_DROPS_OFF;
+        //         // we don't care how the cases drop into each other
+        //         rv &= ~END_DROPS_OFF;
 
-//         // examine the default
-//         n = ((Jump)this).getDefault();
-//         if (n != null)
-//             rv |= n.endCheck();
-//         else
-//             rv |= END_DROPS_OFF;
+        //         // examine the default
+        //         n = ((Jump)this).getDefault();
+        //         if (n != null)
+        //             rv |= n.endCheck();
+        //         else
+        //             rv |= END_DROPS_OFF;
 
-//         // remove the switch block
-//         rv |= getIntProp(CONTROL_BLOCK_PROP, END_UNREACHED);
+        //         // remove the switch block
+        //         rv |= getIntProp(CONTROL_BLOCK_PROP, END_UNREACHED);
 
         return rv;
     }
 
     /**
-     * If the block has a finally, return consistency is checked in the
-     * finally block. If all code paths in the finally returns, then the
-     * returns in the try-catch blocks don't matter. If there is a code path
-     * that does not return or if there is no finally block, the returns
-     * of the try and catch blocks are checked for mismatch.
+     * If the block has a finally, return consistency is checked in the finally block. If all code
+     * paths in the finally returns, then the returns in the try-catch blocks don't matter. If there
+     * is a code path that does not return or if there is no finally block, the returns of the try
+     * and catch blocks are checked for mismatch.
      *
      * @return logical OR of END_* flags
      */
@@ -789,43 +743,43 @@ public class Node implements Iterable<Node> {
         // a TryStatement isn't a jump - needs rewriting
 
         // check the finally if it exists
-//         n = ((Jump)this).getFinally();
-//         if(n != null) {
-//             rv = n.next.first.endCheck();
-//         } else {
-//             rv = END_DROPS_OFF;
-//         }
+        //         n = ((Jump)this).getFinally();
+        //         if(n != null) {
+        //             rv = n.next.first.endCheck();
+        //         } else {
+        //             rv = END_DROPS_OFF;
+        //         }
 
-//         // if the finally block always returns, then none of the returns
-//         // in the try or catch blocks matter
-//         if ((rv & END_DROPS_OFF) != 0) {
-//             rv &= ~END_DROPS_OFF;
+        //         // if the finally block always returns, then none of the returns
+        //         // in the try or catch blocks matter
+        //         if ((rv & END_DROPS_OFF) != 0) {
+        //             rv &= ~END_DROPS_OFF;
 
-//             // examine the try block
-//             rv |= first.endCheck();
+        //             // examine the try block
+        //             rv |= first.endCheck();
 
-//             // check each catch block
-//             n = ((Jump)this).target;
-//             if (n != null)
-//             {
-//                 // point to the first catch_scope
-//                 for (n = n.next.first; n != null; n = n.next.next)
-//                 {
-//                     // check the block of user code in the catch_scope
-//                     rv |= n.next.first.next.first.endCheck();
-//                 }
-//             }
-//         }
+        //             // check each catch block
+        //             n = ((Jump)this).target;
+        //             if (n != null)
+        //             {
+        //                 // point to the first catch_scope
+        //                 for (n = n.next.first; n != null; n = n.next.next)
+        //                 {
+        //                     // check the block of user code in the catch_scope
+        //                     rv |= n.next.first.next.first.endCheck();
+        //                 }
+        //             }
+        //         }
 
         return rv;
     }
 
     /**
-     * Return statement in the loop body must be consistent. The default
-     * assumption for any kind of a loop is that it will eventually terminate.
-     * The only exception is a loop with a constant true condition. Code that
-     * follows such a loop is examined only if one can statically determine
-     * that there is a break out of the loop.
+     * Return statement in the loop body must be consistent. The default assumption for any kind of
+     * a loop is that it will eventually terminate. The only exception is a loop with a constant
+     * true condition. Code that follows such a loop is examined only if one can statically
+     * determine that there is a break out of the loop.
+     *
      * <pre>
      *  for(&lt;&gt; ; &lt;&gt;; &lt;&gt;) {}
      *  for(&lt;&gt; in &lt;&gt; ) {}
@@ -847,15 +801,13 @@ public class Node implements Iterable<Node> {
         for (n = first; n.next != last; n = n.next) {
             /* skip */
         }
-        if (n.type != Token.IFEQ)
-            return END_DROPS_OFF;
+        if (n.type != Token.IFEQ) return END_DROPS_OFF;
 
         // The target's next is the loop body block
         rv = ((Jump) n).target.next.endCheck();
 
         // check to see if the loop condition is true
-        if (n.first.type == Token.TRUE)
-            rv &= ~END_DROPS_OFF;
+        if (n.first.type == Token.TRUE) rv &= ~END_DROPS_OFF;
 
         // look for effect of breaks
         rv |= getIntProp(CONTROL_BLOCK_PROP, END_UNREACHED);
@@ -864,9 +816,8 @@ public class Node implements Iterable<Node> {
     }
 
     /**
-     * A general block of code is examined statement by statement. If any
-     * statement (even compound ones) returns in all branches, then subsequent
-     * statements are not examined.
+     * A general block of code is examined statement by statement. If any statement (even compound
+     * ones) returns in all branches, then subsequent statements are not examined.
      *
      * @return logical OR of END_* flags
      */
@@ -884,10 +835,9 @@ public class Node implements Iterable<Node> {
     }
 
     /**
-     * A labelled statement implies that there maybe a break to the label. The
-     * function processes the labelled statement and then checks the
-     * CONTROL_BLOCK_PROP property to see if there is ever a break to the
-     * particular label.
+     * A labelled statement implies that there maybe a break to the label. The function processes
+     * the labelled statement and then checks the CONTROL_BLOCK_PROP property to see if there is
+     * ever a break to the particular label.
      *
      * @return logical OR of END_* flags
      */
@@ -901,8 +851,8 @@ public class Node implements Iterable<Node> {
     }
 
     /**
-     * When a break is encountered annotate the statement being broken
-     * out of by setting its CONTROL_BLOCK_PROP property.
+     * When a break is encountered annotate the statement being broken out of by setting its
+     * CONTROL_BLOCK_PROP property.
      *
      * @return logical OR of END_* flags
      */
@@ -913,12 +863,11 @@ public class Node implements Iterable<Node> {
     }
 
     /**
-     * endCheck() examines the body of a function, doing a basic reachability
-     * analysis and returns a combination of flags END_* flags that indicate
-     * how the function execution can terminate. These constitute only the
-     * pessimistic set of termination conditions. It is possible that at
-     * runtime certain code paths will never be actually taken. Hence this
-     * analysis will flag errors in cases where there may not be errors.
+     * endCheck() examines the body of a function, doing a basic reachability analysis and returns a
+     * combination of flags END_* flags that indicate how the function execution can terminate.
+     * These constitute only the pessimistic set of termination conditions. It is possible that at
+     * runtime certain code paths will never be actually taken. Hence this analysis will flag errors
+     * in cases where there may not be errors.
      *
      * @return logical OR of END_* flags
      */
@@ -928,11 +877,11 @@ public class Node implements Iterable<Node> {
                 return endCheckBreak();
 
             case Token.EXPR_VOID:
-                if (this.first != null)
-                    return first.endCheck();
+                if (this.first != null) return first.endCheck();
                 return END_DROPS_OFF;
 
             case Token.YIELD:
+            case Token.YIELD_STAR:
                 return END_YIELDS;
 
             case Token.CONTINUE:
@@ -940,13 +889,11 @@ public class Node implements Iterable<Node> {
                 return END_UNREACHED;
 
             case Token.RETURN:
-                if (this.first != null)
-                    return END_RETURNS_VALUE;
+                if (this.first != null) return END_RETURNS_VALUE;
                 return END_RETURNS;
 
             case Token.TARGET:
-                if (next != null)
-                    return next.endCheck();
+                if (next != null) return next.endCheck();
                 return END_DROPS_OFF;
 
             case Token.LOOP:
@@ -955,8 +902,7 @@ public class Node implements Iterable<Node> {
             case Token.LOCAL_BLOCK:
             case Token.BLOCK:
                 // there are several special kinds of blocks
-                if (first == null)
-                    return END_DROPS_OFF;
+                if (first == null) return END_DROPS_OFF;
 
                 switch (first.type) {
                     case Token.LABEL:
@@ -984,31 +930,24 @@ public class Node implements Iterable<Node> {
         switch (type) {
             case Token.EXPR_VOID:
             case Token.COMMA:
-                if (last != null)
-                    return last.hasSideEffects();
+                if (last != null) return last.hasSideEffects();
                 return true;
 
             case Token.HOOK:
-                if (first == null ||
-                        first.next == null ||
-                        first.next.next == null)
-                    Kit.codeBug();
-                return first.next.hasSideEffects() &&
-                        first.next.next.hasSideEffects();
+                if (first == null || first.next == null || first.next.next == null) Kit.codeBug();
+                return first.next.hasSideEffects() && first.next.next.hasSideEffects();
 
             case Token.AND:
             case Token.OR:
-                if (first == null || last == null)
-                    Kit.codeBug();
+                if (first == null || last == null) Kit.codeBug();
                 return first.hasSideEffects() || last.hasSideEffects();
 
-            case Token.ERROR:         // Avoid cascaded error messages
+            case Token.ERROR: // Avoid cascaded error messages
             case Token.EXPR_RESULT:
             case Token.ASSIGN:
             case Token.ASSIGN_ADD:
             case Token.ASSIGN_SUB:
             case Token.ASSIGN_MUL:
-            case Token.ASSIGN_EXP:
             case Token.ASSIGN_DIV:
             case Token.ASSIGN_MOD:
             case Token.ASSIGN_BITOR:
@@ -1067,6 +1006,7 @@ public class Node implements Iterable<Node> {
             case Token.LOCAL_BLOCK:
             case Token.SET_REF_OP:
             case Token.YIELD:
+            case Token.YIELD_STAR:
                 return true;
 
             default:
@@ -1076,14 +1016,14 @@ public class Node implements Iterable<Node> {
 
     /**
      * Recursively unlabel every TARGET or YIELD node in the tree.
-     * <p>
-     * This is used and should only be used for inlining finally blocks where
-     * jsr instructions used to be. It is somewhat hackish, but implementing
-     * a clone() operation would take much, much more effort.
-     * <p>
-     * This solution works for inlining finally blocks because you should never
-     * be writing any given block to the class file simultaneously. Therefore,
-     * an unlabeling will never occur in the middle of a block.
+     *
+     * <p>This is used and should only be used for inlining finally blocks where jsr instructions
+     * used to be. It is somewhat hackish, but implementing a clone() operation would take much,
+     * much more effort.
+     *
+     * <p>This solution works for inlining finally blocks because you should never be writing any
+     * given block to the class file simultaneously. Therefore, an unlabeling will never occur in
+     * the middle of a block.
      */
     public void resetTargets() {
         if (type == Token.FINALLY) {
@@ -1094,7 +1034,7 @@ public class Node implements Iterable<Node> {
     }
 
     private void resetTargets_r() {
-        if (type == Token.TARGET || type == Token.YIELD) {
+        if (type == Token.TARGET || type == Token.YIELD || type == Token.YIELD_STAR) {
             labelId(-1);
         }
         Node child = first;
@@ -1106,7 +1046,7 @@ public class Node implements Iterable<Node> {
 
     @Override
     public String toString() {
-        if (Token.printTrees || (Context.getCurrentContext() != null && Context.getContext().hasFeature(Context.EMIT_DEBUG_OUTPUT))) {
+        if (Token.printTrees) {
             StringBuilder sb = new StringBuilder();
             toString(new ObjToIntMap(), sb);
             return sb.toString();
@@ -1115,221 +1055,234 @@ public class Node implements Iterable<Node> {
     }
 
     private void toString(ObjToIntMap printIds, StringBuilder sb) {
-        sb.append(Token.name(type));
-        if (this instanceof Name) {
-            sb.append(' ');
-            sb.append(getString());
-            Scope scope = getScope();
-            if (scope != null) {
-                sb.append("[scope: ");
-                appendPrintId(scope, printIds, sb);
-                sb.append("]");
-            }
-        } else if (this instanceof Scope) {
-            if (this instanceof ScriptNode) {
-                ScriptNode sof = (ScriptNode) this;
-                if (this instanceof FunctionNode) {
-                    FunctionNode fn = (FunctionNode) this;
-                    sb.append(' ');
-                    sb.append(fn.getName());
+        if (Token.printTrees) {
+            sb.append(Token.name(type));
+            if (this instanceof Name) {
+                sb.append(' ');
+                sb.append(getString());
+                Scope scope = getScope();
+                if (scope != null) {
+                    sb.append("[scope: ");
+                    appendPrintId(scope, printIds, sb);
+                    sb.append("]");
                 }
-                sb.append(" [source name: ");
-                sb.append(sof.getSourceName());
-                sb.append("] [encoded source length: ");
-                sb.append(sof.getEncodedSourceEnd()
-                        - sof.getEncodedSourceStart());
-                sb.append("] [base line: ");
-                sb.append(sof.getBaseLineno());
-                sb.append("] [end line: ");
-                sb.append(sof.getEndLineno());
-                sb.append(']');
-            }
-            if (((Scope) this).getSymbolTable() != null) {
-                sb.append(" [scope ");
+            } else if (this instanceof Scope) {
+                if (this instanceof ScriptNode) {
+                    ScriptNode sof = (ScriptNode) this;
+                    if (this instanceof FunctionNode) {
+                        FunctionNode fn = (FunctionNode) this;
+                        sb.append(' ');
+                        sb.append(fn.getName());
+                    }
+                    sb.append(" [source name: ");
+                    sb.append(sof.getSourceName());
+                    sb.append("] [encoded source length: ");
+                    sb.append(sof.getEncodedSourceEnd() - sof.getEncodedSourceStart());
+                    sb.append("] [base line: ");
+                    sb.append(sof.getBaseLineno());
+                    sb.append("] [end line: ");
+                    sb.append(sof.getEndLineno());
+                    sb.append(']');
+                }
+                if (((Scope) this).getSymbolTable() != null) {
+                    sb.append(" [scope ");
+                    appendPrintId(this, printIds, sb);
+                    sb.append(": ");
+                    for (String s : ((Scope) this).getSymbolTable().keySet()) {
+                        sb.append(s);
+                        sb.append(" ");
+                    }
+                    sb.append("]");
+                }
+            } else if (this instanceof Jump) {
+                Jump jump = (Jump) this;
+                if (type == Token.BREAK || type == Token.CONTINUE) {
+                    sb.append(" [label: ");
+                    appendPrintId(jump.getJumpStatement(), printIds, sb);
+                    sb.append(']');
+                } else if (type == Token.TRY) {
+                    Node catchNode = jump.target;
+                    Node finallyTarget = jump.getFinally();
+                    if (catchNode != null) {
+                        sb.append(" [catch: ");
+                        appendPrintId(catchNode, printIds, sb);
+                        sb.append(']');
+                    }
+                    if (finallyTarget != null) {
+                        sb.append(" [finally: ");
+                        appendPrintId(finallyTarget, printIds, sb);
+                        sb.append(']');
+                    }
+                } else if (type == Token.LABEL || type == Token.LOOP || type == Token.SWITCH) {
+                    sb.append(" [break: ");
+                    appendPrintId(jump.target, printIds, sb);
+                    sb.append(']');
+                    if (type == Token.LOOP) {
+                        sb.append(" [continue: ");
+                        appendPrintId(jump.getContinue(), printIds, sb);
+                        sb.append(']');
+                    }
+                } else {
+                    sb.append(" [target: ");
+                    appendPrintId(jump.target, printIds, sb);
+                    sb.append(']');
+                }
+            } else if (type == Token.NUMBER) {
+                sb.append(' ');
+                sb.append(getDouble());
+            } else if (type == Token.BIGINT) {
+                sb.append(' ');
+                sb.append(getBigInt().toString());
+            } else if (type == Token.TARGET) {
+                sb.append(' ');
                 appendPrintId(this, printIds, sb);
-                sb.append(": ");
-                Iterator<String> iter =
-                        ((Scope) this).getSymbolTable().keySet().iterator();
-                while (iter.hasNext()) {
-                    sb.append(iter.next());
-                    sb.append(" ");
-                }
-                sb.append("]");
             }
-        } else if (this instanceof Jump) {
-            Jump jump = (Jump) this;
-            if (type == Token.BREAK || type == Token.CONTINUE) {
-                sb.append(" [label: ");
-                appendPrintId(jump.getJumpStatement(), printIds, sb);
-                sb.append(']');
-            } else if (type == Token.TRY) {
-                Node catchNode = jump.target;
-                Node finallyTarget = jump.getFinally();
-                if (catchNode != null) {
-                    sb.append(" [catch: ");
-                    appendPrintId(catchNode, printIds, sb);
-                    sb.append(']');
-                }
-                if (finallyTarget != null) {
-                    sb.append(" [finally: ");
-                    appendPrintId(finallyTarget, printIds, sb);
-                    sb.append(']');
-                }
-            } else if (type == Token.LABEL || type == Token.LOOP
-                    || type == Token.SWITCH) {
-                sb.append(" [break: ");
-                appendPrintId(jump.target, printIds, sb);
-                sb.append(']');
-                if (type == Token.LOOP) {
-                    sb.append(" [continue: ");
-                    appendPrintId(jump.getContinue(), printIds, sb);
-                    sb.append(']');
-                }
-            } else {
-                sb.append(" [target: ");
-                appendPrintId(jump.target, printIds, sb);
-                sb.append(']');
+            if (lineno != -1) {
+                sb.append(' ');
+                sb.append(lineno);
             }
-        } else if (type == Token.NUMBER) {
-            sb.append(' ');
-            sb.append(getDouble());
-        } else if (type == Token.TARGET) {
-            sb.append(' ');
-            appendPrintId(this, printIds, sb);
-        }
-        if (lineno != -1) {
-            sb.append(' ');
-            sb.append(lineno);
-        }
 
-        for (PropListItem x = propListHead; x != null; x = x.next) {
-            int type = x.type;
-            sb.append(" [");
-            sb.append(propToString(type));
-            sb.append(": ");
-            StringBuilder value;
-            switch (type) {
-                case TARGETBLOCK_PROP: // can't add this as it recurses
-                    value = new StringBuilder("target block property");
-                    break;
-                case LOCAL_BLOCK_PROP:     // can't add this as it is dull
-                    value = new StringBuilder("last local block");
-                    break;
-                case ISNUMBER_PROP:
-                    switch (x.intValue) {
-                        case BOTH:
-                            value = new StringBuilder("both");
+            for (PropListItem x = propListHead; x != null; x = x.next) {
+                int type = x.type;
+                sb.append(" [");
+                sb.append(propToString(type));
+                sb.append(": ");
+                switch (type) {
+                    case TARGETBLOCK_PROP: // can't add this as it recurses
+                        sb.append("target block property");
+                        break;
+                    case LOCAL_BLOCK_PROP: // can't add this as it is dull
+                        sb.append("last local block");
+                        break;
+                    case ISNUMBER_PROP:
+                        switch (x.intValue) {
+                            case BOTH:
+                                sb.append("both");
+                                break;
+                            case RIGHT:
+                                sb.append("right");
+                                break;
+                            case LEFT:
+                                sb.append("left");
+                                break;
+                            default:
+                                throw Kit.codeBug();
+                        }
+                        break;
+                    case SPECIALCALL_PROP:
+                        switch (x.intValue) {
+                            case SPECIALCALL_EVAL:
+                                sb.append("eval");
+                                break;
+                            case SPECIALCALL_WITH:
+                                sb.append("with");
+                                break;
+                            default:
+                                // NON_SPECIALCALL should not be stored
+                                throw Kit.codeBug();
+                        }
+                        break;
+                    case OBJECT_IDS_PROP:
+                        {
+                            Object[] a = (Object[]) x.objectValue;
+                            sb.append("[");
+                            for (int i = 0; i < a.length; i++) {
+                                sb.append(a[i].toString());
+                                if (i + 1 < a.length) sb.append(", ");
+                            }
+                            sb.append("]");
                             break;
-                        case RIGHT:
-                            value = new StringBuilder("right");
-                            break;
-                        case LEFT:
-                            value = new StringBuilder("left");
-                            break;
-                        default:
-                            throw Kit.codeBug();
-                    }
-                    break;
-                case SPECIALCALL_PROP:
-                    switch (x.intValue) {
-                        case SPECIALCALL_EVAL:
-                            value = new StringBuilder("eval");
-                            break;
-                        case SPECIALCALL_WITH:
-                            value = new StringBuilder("with");
-                            break;
-                        default:
-                            // NON_SPECIALCALL should not be stored
-                            throw Kit.codeBug();
-                    }
-                    break;
-                case OBJECT_IDS_PROP: {
-                    Object[] a = (Object[]) x.objectValue;
-                    value = new StringBuilder("[");
-                    for (int i = 0; i < a.length; i++) {
-                        value.append(a[i].toString());
-                        if (i + 1 < a.length)
-                            value.append(", ");
-                    }
-                    value.append("]");
-                    break;
+                        }
+                    default:
+                        Object obj = x.objectValue;
+                        if (obj != null) {
+                            sb.append(obj.toString());
+                        } else {
+                            sb.append(String.valueOf(x.intValue));
+                        }
+                        break;
                 }
-                default:
-                    Object obj = x.objectValue;
-                    if (obj != null) {
-                        value = new StringBuilder(obj.toString());
-                    } else {
-                        value = new StringBuilder(String.valueOf(x.intValue));
-                    }
-                    break;
+                sb.append(']');
             }
-            sb.append(value);
-            sb.append(']');
         }
     }
 
     public String toStringTree(ScriptNode treeTop) {
-        StringBuilder sb = new StringBuilder();
-        toStringTreeHelper(treeTop, this, null, 0, sb);
-        return sb.toString();
+        if (Token.printTrees) {
+            StringBuilder sb = new StringBuilder();
+            toStringTreeHelper(treeTop, this, null, 0, sb);
+            return sb.toString();
+        }
+        return null;
     }
 
-    private static void toStringTreeHelper(ScriptNode treeTop, Node n,
-                                           ObjToIntMap printIds,
-                                           int level, StringBuilder sb) {
-        if (printIds == null) {
-            printIds = new ObjToIntMap();
-            generatePrintIds(treeTop, printIds);
-        }
-        for (int i = 0; i != level; ++i) {
-            sb.append("    ");
-        }
-        n.toString(printIds, sb);
-        sb.append('\n');
-        for (Node cursor = n.getFirstChild(); cursor != null;
-             cursor = cursor.getNext()) {
-            if (cursor.getType() == Token.FUNCTION) {
-                int fnIndex = cursor.getExistingIntProp(Node.FUNCTION_PROP);
-                FunctionNode fn = treeTop.getFunctionNode(fnIndex);
-                toStringTreeHelper(fn, fn, null, level + 1, sb);
-            } else {
-                toStringTreeHelper(treeTop, cursor, printIds, level + 1, sb);
+    private static void toStringTreeHelper(
+            ScriptNode treeTop, Node n, ObjToIntMap printIds, int level, StringBuilder sb) {
+        if (Token.printTrees) {
+            if (printIds == null) {
+                printIds = new ObjToIntMap();
+                generatePrintIds(treeTop, printIds);
+            }
+            for (int i = 0; i != level; ++i) {
+                sb.append("    ");
+            }
+            n.toString(printIds, sb);
+            sb.append('\n');
+            for (Node cursor = n.getFirstChild(); cursor != null; cursor = cursor.getNext()) {
+                if (cursor.getType() == Token.FUNCTION) {
+                    int fnIndex = cursor.getExistingIntProp(Node.FUNCTION_PROP);
+                    FunctionNode fn = treeTop.getFunctionNode(fnIndex);
+                    toStringTreeHelper(fn, fn, null, level + 1, sb);
+                } else {
+                    toStringTreeHelper(treeTop, cursor, printIds, level + 1, sb);
+                }
             }
         }
     }
 
     private static void generatePrintIds(Node n, ObjToIntMap map) {
-        map.put(n, map.size());
-        for (Node cursor = n.getFirstChild(); cursor != null;
-             cursor = cursor.getNext()) {
-            generatePrintIds(cursor, map);
-        }
-    }
-
-    private static void appendPrintId(Node n, ObjToIntMap printIds,
-                                      StringBuilder sb) {
-        if (n != null) {
-            int id = printIds.get(n, -1);
-            sb.append('#');
-            if (id != -1) {
-                sb.append(id + 1);
-            } else {
-                sb.append("<not_available>");
+        if (Token.printTrees) {
+            map.put(n, map.size());
+            for (Node cursor = n.getFirstChild(); cursor != null; cursor = cursor.getNext()) {
+                generatePrintIds(cursor, map);
             }
         }
     }
 
-    protected int type = Token.ERROR; // type of the node, e.g. Token.NAME
-    protected Node next;             // next sibling
-    protected Node first;    // first element of a linked list of children
-    protected Node last;     // last element of a linked list of children
-    protected int lineno = -1;
+    private static void appendPrintId(Node n, ObjToIntMap printIds, StringBuilder sb) {
+        if (Token.printTrees) {
+            if (n != null) {
+                int id = printIds.get(n, -1);
+                sb.append('#');
+                if (id != -1) {
+                    sb.append(id + 1);
+                } else {
+                    sb.append("<not_available>");
+                }
+            }
+        }
+    }
 
     /**
-     * Linked list of properties. Since vast majority of nodes would have
-     * no more then 2 properties, linked list saves memory and provides
-     * fast lookup. If this does not holds, propListHead can be replaced
-     * by UintMap.
+     * @return the column of where a Node is defined in source. If the column is -1, it was never
+     *     initialized. One-based.
+     *     <p>May be overridden by sub classes
+     */
+    public int getColumn() {
+        return column;
+    }
+
+    protected int type = Token.ERROR; // type of the node, e.g. Token.NAME
+    protected Node next; // next sibling
+    protected Node first; // first element of a linked list of children
+    protected Node last; // last element of a linked list of children
+    protected int lineno = -1;
+    private int column = -1;
+
+    /**
+     * Linked list of properties. Since vast majority of nodes would have no more then 2 properties,
+     * linked list saves memory and provides fast lookup. If this does not holds, propListHead can
+     * be replaced by UintMap.
      */
     protected PropListItem propListHead;
 }

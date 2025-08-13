@@ -11,29 +11,24 @@ import java.lang.reflect.Modifier;
 import java.util.Map;
 
 /**
- * This class reflects Java classes into the JavaScript environment, mainly
- * for constructors and static members.  We lazily reflect properties,
- * and currently do not guarantee that a single j.l.Class is only
- * reflected once into the JS environment, although we should.
- * The only known case where multiple reflections
- * are possible occurs when a j.l.Class is wrapped as part of a
- * method return or property access, rather than by walking the
- * Packages/java tree.
+ * This class reflects Java classes into the JavaScript environment, mainly for constructors and
+ * static members. We lazily reflect properties, and currently do not guarantee that a single
+ * j.l.Class is only reflected once into the JS environment, although we should. The only known case
+ * where multiple reflections are possible occurs when a j.l.Class is wrapped as part of a method
+ * return or property access, rather than by walking the Packages/java tree.
  *
  * @author Mike Shaver
  * @see NativeJavaArray
  * @see NativeJavaObject
  * @see NativeJavaPackage
  */
-
 public class NativeJavaClass extends NativeJavaObject implements Function {
     private static final long serialVersionUID = -6460763940409461664L;
 
     // Special property for getting the underlying Java class object.
     static final String javaClassPropertyName = "__javaObject__";
 
-    public NativeJavaClass() {
-    }
+    public NativeJavaClass() {}
 
     public NativeJavaClass(Scriptable scope, Class<?> cl) {
         this(scope, cl, false);
@@ -57,7 +52,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 
     @Override
     public boolean has(String name, Scriptable start) {
-        return members.has(name, true) || javaClassPropertyName.equals(name);
+        return members.has(name, true) || javaClassPropertyName.equals(name) || "class".equals(name);
     }
 
     @Override
@@ -66,38 +61,34 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
         // for our prototype to create an object of the correct type.
         // We don't really care what the object is, since we're returning
         // one constructed out of whole cloth, so we return null.
-        if (name.equals("prototype"))
-            return null;
-
-        if (name.equals("class")) {
-            return getClassObject();
-        }
+        if (name.equals("prototype")) return null;
 
         if (staticFieldAndMethods != null) {
             Object result = staticFieldAndMethods.get(name);
-            if (result != null)
-                return result;
+            if (result != null) return result;
         }
 
         if (members.has(name, true)) {
-            return members.get(this, name, javaObject, true);
+            Object member = members.get(this, name, javaObject, true);
+            // trying to access .class when there is an existing static setClass()
+            if (!("class".equals(name) && member == NOT_FOUND)) {
+                return member;
+            }
         }
 
         Context cx = Context.getContext();
         Scriptable scope = ScriptableObject.getTopLevelScope(start);
         WrapFactory wrapFactory = cx.getWrapFactory();
 
-        if (javaClassPropertyName.equals(name)) {
-            return wrapFactory.wrap(cx, scope, javaObject,
-                    ScriptRuntime.ClassClass);
+        if (javaClassPropertyName.equals(name) || "class".equals(name)) {
+            return wrapFactory.wrap(cx, scope, javaObject, ScriptRuntime.ClassClass);
         }
 
         // experimental:  look for nested classes by appending $name to
         // current class' name.
         Class<?> nestedClass = findNestedClass(getClassObject(), name);
         if (nestedClass != null) {
-            Scriptable nestedValue = wrapFactory.wrapJavaClass(cx, scope,
-                    nestedClass);
+            Scriptable nestedValue = wrapFactory.wrapJavaClass(cx, scope, nestedClass);
             nestedValue.setParentScope(this);
             return nestedValue;
         }
@@ -121,31 +112,41 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 
     @Override
     public Object getDefaultValue(Class<?> hint) {
-        if (hint == null || hint == ScriptRuntime.StringClass)
-            return this.toString();
-        if (hint == ScriptRuntime.BooleanClass)
-            return Boolean.TRUE;
-        if (hint == ScriptRuntime.NumberClass)
-            return ScriptRuntime.NaNobj;
+        if (hint == null || hint == ScriptRuntime.StringClass) return this.toString();
+        if (hint == ScriptRuntime.BooleanClass) return Boolean.TRUE;
+        if (hint == ScriptRuntime.NumberClass) return ScriptRuntime.NaNobj;
         return this;
     }
 
     @Override
     public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
-        throw ScriptRuntime.typeError0("msg.no.java.new");
+        // If it looks like a "cast" of an object to this class type,
+        // walk the prototype chain to see if there's a wrapper of a
+        // object that's an instanceof this class.
+        if (args.length == 1 && args[0] instanceof Scriptable) {
+            Class<?> c = getClassObject();
+            Scriptable p = (Scriptable) args[0];
+            do {
+                if (p instanceof Wrapper) {
+                    Object o = ((Wrapper) p).unwrap();
+                    if (c.isInstance(o)) return p;
+                }
+                p = p.getPrototype();
+            } while (p != null);
+        }
+        return construct(cx, scope, args);
     }
 
     @Override
     public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
         Class<?> classObject = getClassObject();
         int modifiers = classObject.getModifiers();
-        if (!(Modifier.isInterface(modifiers) ||
-                Modifier.isAbstract(modifiers))) {
+        if (!(Modifier.isInterface(modifiers) || Modifier.isAbstract(modifiers))) {
             NativeJavaMethod ctors = members.ctors;
             int index = ctors.findCachedFunction(cx, args);
             if (index < 0) {
                 String sig = NativeJavaMethod.scriptSignature(args);
-                throw Context.reportRuntimeError2(
+                throw Context.reportRuntimeErrorById(
                         "msg.no.java.ctor", classObject.getName(), sig);
             }
 
@@ -153,17 +154,17 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
             return constructSpecific(cx, scope, args, ctors.methods[index]);
         }
         if (args.length == 0) {
-            throw Context.reportRuntimeError0("msg.adapter.zero.args");
+            throw Context.reportRuntimeErrorById("msg.adapter.zero.args");
         }
         Scriptable topLevel = ScriptableObject.getTopLevelScope(this);
         String msg = "";
         try {
             // When running on Android create an InterfaceAdapter since our
             // bytecode generation won't work on Dalvik VM.
-            if ("Dalvik".equals(System.getProperty("java.vm.name"))
-                    && classObject.isInterface()) {
-                Object obj = createInterfaceAdapter(classObject,
-                        ScriptableObject.ensureScriptableObject(args[0]));
+            if ("Dalvik".equals(System.getProperty("java.vm.name")) && classObject.isInterface()) {
+                Object obj =
+                        createInterfaceAdapter(
+                                classObject, ScriptableObject.ensureScriptableObject(args[0]));
                 return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, null);
             }
             // use JavaAdapter to construct a new class on the fly that
@@ -178,15 +179,13 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
         } catch (Exception ex) {
             // fall through to error
             String m = ex.getMessage();
-            if (m != null)
-                msg = m;
+            if (m != null) msg = m;
         }
-        throw Context.reportRuntimeError2(
-                "msg.cant.instantiate", msg, classObject.getName());
+        throw Context.reportRuntimeErrorById("msg.cant.instantiate", msg, classObject.getName());
     }
 
-    static Scriptable constructSpecific(Context cx, Scriptable scope,
-                                        Object[] args, MemberBox ctor) {
+    static Scriptable constructSpecific(
+            Context cx, Scriptable scope, Object[] args, MemberBox ctor) {
         Object instance = constructInternal(args, ctor);
         // we need to force this to be wrapped, because construct _has_
         // to return a scriptable
@@ -208,22 +207,18 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 
             // Handle special situation where a single variable parameter
             // is given and it is a Java or ECMA array.
-            if (args.length == argTypes.length &&
-                    (args[args.length - 1] == null ||
-                            args[args.length - 1] instanceof NativeArray ||
-                            args[args.length - 1] instanceof NativeJavaArray)) {
+            if (args.length == argTypes.length
+                    && (args[args.length - 1] == null
+                            || args[args.length - 1] instanceof NativeArray
+                            || args[args.length - 1] instanceof NativeJavaArray)) {
                 // convert the ECMA array into a native array
-                varArgs = Context.jsToJava(args[args.length - 1],
-                        argTypes[argTypes.length - 1]);
+                varArgs = Context.jsToJava(args[args.length - 1], argTypes[argTypes.length - 1]);
             } else {
                 // marshall the variable parameter
-                Class<?> componentType = argTypes[argTypes.length - 1].
-                        getComponentType();
-                varArgs = Array.newInstance(componentType,
-                        args.length - argTypes.length + 1);
+                Class<?> componentType = argTypes[argTypes.length - 1].getComponentType();
+                varArgs = Array.newInstance(componentType, args.length - argTypes.length + 1);
                 for (int i = 0; i < Array.getLength(varArgs); i++) {
-                    Object value = Context.jsToJava(args[argTypes.length - 1 + i],
-                            componentType);
+                    Object value = Context.jsToJava(args[argTypes.length - 1 + i], componentType);
                     Array.set(varArgs, i, value);
                 }
             }
@@ -255,18 +250,15 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
     }
 
     /**
-     * Determines if prototype is a wrapped Java object and performs
-     * a Java "instanceof".
-     * Exception: if value is an instance of NativeJavaClass, it isn't
-     * considered an instance of the Java class; this forestalls any
-     * name conflicts between java.lang.Class's methods and the
-     * static methods exposed by a JavaNativeClass.
+     * Determines if prototype is a wrapped Java object and performs a Java "instanceof". Exception:
+     * if value is an instance of NativeJavaClass, it isn't considered an instance of the Java
+     * class; this forestalls any name conflicts between java.lang.Class's methods and the static
+     * methods exposed by a JavaNativeClass.
      */
     @Override
     public boolean hasInstance(Scriptable value) {
 
-        if (value instanceof Wrapper &&
-                !(value instanceof NativeJavaClass)) {
+        if (value instanceof Wrapper && !(value instanceof NativeJavaClass)) {
             Object instance = ((Wrapper) value).unwrap();
 
             return getClassObject().isInstance(instance);
@@ -290,4 +282,14 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
     }
 
     private Map<String, FieldAndMethods> staticFieldAndMethods;
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }

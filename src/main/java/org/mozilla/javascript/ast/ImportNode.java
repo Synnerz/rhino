@@ -107,7 +107,7 @@ public class ImportNode extends AstNode {
     }
 
     public void setFilePath(String filePath) {
-        this.filePath = filePath;
+        this.filePath = filePath.replace(".js", "");
     }
 
     public static class ModuleMember {

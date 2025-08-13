@@ -6,29 +6,30 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.ScriptRuntimeES6;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
- * An array view that stores 16-bit quantities and implements the JavaScript "Uint16Array" interface.
- * It also implements List&lt;Integer&gt; for direct manipulation in Java.
+ * An array view that stores 16-bit quantities and implements the JavaScript "Uint16Array"
+ * interface. It also implements List&lt;Integer&gt; for direct manipulation in Java.
  */
-
-public class NativeUint16Array
-        extends NativeTypedArrayView<Integer> {
+public class NativeUint16Array extends NativeTypedArrayView<Integer> {
     private static final long serialVersionUID = 7700018949434240321L;
 
     private static final String CLASS_NAME = "Uint16Array";
     private static final int BYTES_PER_ELEMENT = 2;
 
-    public NativeUint16Array() {
-    }
+    public NativeUint16Array() {}
 
     public NativeUint16Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len * BYTES_PER_ELEMENT);
     }
 
     public NativeUint16Array(int len) {
-        this(new NativeArrayBuffer(len * BYTES_PER_ELEMENT), 0, len);
+        this(new NativeArrayBuffer((double) len * BYTES_PER_ELEMENT), 0, len);
     }
 
     @Override
@@ -36,14 +37,20 @@ public class NativeUint16Array
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed) {
-        NativeUint16Array a = new NativeUint16Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    @Override
+    public void declare(String name, Scriptable start) {
+
     }
 
     @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor) {
-        addCtorSpecies(ctor);
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    public static void init(Context cx, Scriptable scope, boolean sealed) {
+        NativeUint16Array a = new NativeUint16Array();
+        IdFunctionObject constructor = a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        ScriptRuntimeES6.addSymbolSpecies(cx, scope, constructor);
     }
 
     @Override
@@ -58,11 +65,7 @@ public class NativeUint16Array
 
     @Override
     protected NativeUint16Array realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeUint16Array)) {
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint16Array) unwrappedThis;
+        return ensureType(thisObj, NativeUint16Array.class, f);
     }
 
     @Override
@@ -70,7 +73,8 @@ public class NativeUint16Array
         if (checkIndex(index)) {
             return Undefined.instance;
         }
-        return ByteIo.readUint16(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
+        return ByteIo.readUint16(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, useLittleEndian());
     }
 
     @Override
@@ -79,7 +83,8 @@ public class NativeUint16Array
             return Undefined.instance;
         }
         int val = Conversions.toUint16(c);
-        ByteIo.writeUint16(arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
+        ByteIo.writeUint16(
+                arrayBuffer.buffer, (index * BYTES_PER_ELEMENT) + offset, val, useLittleEndian());
         return null;
     }
 

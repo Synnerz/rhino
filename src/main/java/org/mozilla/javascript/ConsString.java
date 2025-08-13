@@ -10,20 +10,18 @@ import java.io.Serializable;
 import java.util.ArrayDeque;
 
 /**
- * <p>This class represents a string composed of two components, each of which
- * may be a <code>java.lang.String</code> or another ConsString.</p>
+ * This class represents a string composed of two components, each of which may be a <code>
+ * java.lang.String</code> or another ConsString.
  *
- * <p>This string representation is optimized for concatenation using the "+"
- * operator. Instead of immediately copying both components to a new character
- * array, ConsString keeps references to the original components and only
- * converts them to a String if either toString() is called or a certain depth
- * level is reached.</p>
+ * <p>This string representation is optimized for concatenation using the "+" operator. Instead of
+ * immediately copying both components to a new character array, ConsString keeps references to the
+ * original components and only converts them to a String if either toString() is called or a
+ * certain depth level is reached.
  *
- * <p>Note that instances of this class are only immutable if both parts are
- * immutable, i.e. either Strings or ConsStrings that are ultimately composed
- * of Strings.</p>
+ * <p>Note that instances of this class are only immutable if both parts are immutable, i.e. either
+ * Strings or ConsStrings that are ultimately composed of Strings.
  *
- * <p>Both the name and the concept are borrowed from V8.</p>
+ * <p>Both the name and the concept are borrowed from V8.
  */
 public class ConsString implements CharSequence, Serializable {
 
@@ -34,6 +32,12 @@ public class ConsString implements CharSequence, Serializable {
     private boolean isFlat;
 
     public ConsString(CharSequence str1, CharSequence str2) {
+        if (!(str1 instanceof String) && !(str1 instanceof ConsString)) {
+            str1 = str1.toString();
+        }
+        if (!(str2 instanceof String) && !(str2 instanceof ConsString)) {
+            str2 = str2.toString();
+        }
         left = str1;
         right = str2;
         length = left.length() + right.length();
@@ -55,7 +59,7 @@ public class ConsString implements CharSequence, Serializable {
             final char[] chars = new char[length];
             int charPos = length;
 
-            ArrayDeque<CharSequence> stack = new ArrayDeque<CharSequence>();
+            ArrayDeque<CharSequence> stack = new ArrayDeque<>();
             stack.addFirst(left);
 
             CharSequence next = right;

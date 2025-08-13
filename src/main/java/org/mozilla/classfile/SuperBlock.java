@@ -7,11 +7,10 @@
 package org.mozilla.classfile;
 
 /**
- * A super block is defined as a contiguous chunk of code with a single entry
- * point and multiple exit points (therefore ending in an unconditional jump
- * or the end of the method). This is used to emulate OpenJDK's compiler, which
- * outputs stack map frames at the start of every super block except the method
- * start.
+ * A super block is defined as a contiguous chunk of code with a single entry point and multiple
+ * exit points (therefore ending in an unconditional jump or the end of the method). This is used to
+ * emulate OpenJDK's compiler, which outputs stack map frames at the start of every super block
+ * except the method start.
  */
 final class SuperBlock {
     SuperBlock(int index, int start, int end, int[] initialLocals) {
@@ -37,18 +36,18 @@ final class SuperBlock {
 
     /**
      * Get a copy of the super block's locals without any trailing TOP types.
-     * <p>
-     * This is useful for actual writing stack maps; during the computation of
-     * stack map types, all local arrays have the same size; the max locals for
-     * the method. In addition, DOUBLE and LONG types have trailing TOP types
-     * because they occupy two words. For writing purposes, these are not
-     * useful.
+     *
+     * <p>This is useful for actual writing stack maps; during the computation of stack map types,
+     * all local arrays have the same size; the max locals for the method. In addition, DOUBLE and
+     * LONG types have trailing TOP types because they occupy two words. For writing purposes, these
+     * are not useful.
      */
     int[] getTrimmedLocals() {
         int last = locals.length - 1;
         // Exclude all of the trailing TOPs not bound to a DOUBLE/LONG
-        while (last >= 0 && locals[last] == TypeInfo.TOP &&
-                !TypeInfo.isTwoWords(locals[last - 1])) {
+        while (last >= 0
+                && locals[last] == TypeInfo.TOP
+                && !TypeInfo.isTwoWords(locals[last - 1])) {
             last--;
         }
         last++;
@@ -100,14 +99,12 @@ final class SuperBlock {
 
     /**
      * Merge an operand stack or local variable array with incoming state.
-     * <p>
-     * They are treated the same way; by this point, it should already be
-     * ensured that the array sizes are the same, which is the only additional
-     * constraint that is imposed on merging operand stacks (the local variable
-     * array is always the same size).
+     *
+     * <p>They are treated the same way; by this point, it should already be ensured that the array
+     * sizes are the same, which is the only additional constraint that is imposed on merging
+     * operand stacks (the local variable array is always the same size).
      */
-    private boolean mergeState(int[] current, int[] incoming, int size,
-                               ConstantPool pool) {
+    private static boolean mergeState(int[] current, int[] incoming, int size, ConstantPool pool) {
         boolean changed = false;
         for (int i = 0; i < size; i++) {
             int currentType = current[i];

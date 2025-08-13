@@ -4,24 +4,27 @@
 
 package org.mozilla.javascript;
 
+import java.lang.ref.SoftReference;
+import java.lang.reflect.UndeclaredThrowableException;
+import java.security.AccessController;
+import java.security.CodeSource;
+import java.security.Policy;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.security.SecureClassLoader;
+import java.util.Map;
+import java.util.WeakHashMap;
 import org.mozilla.classfile.ByteCode;
 import org.mozilla.classfile.ClassFileWriter;
 
-import java.lang.ref.SoftReference;
-import java.lang.reflect.UndeclaredThrowableException;
-import java.security.*;
-import java.util.Map;
-import java.util.WeakHashMap;
-
 /**
- * A security controller relying on Java {@link Policy} in effect. When you use
- * this security controller, your securityDomain objects must be instances of
- * {@link CodeSource} representing the location from where you load your
- * scripts. Any Java policy "grant" statements matching the URL and certificate
- * in code sources will apply to the scripts. If you specify any certificates
- * within your {@link CodeSource} objects, it is your responsibility to verify
- * (or not) that the script source files are signed in whatever
- * implementation-specific way you're using.
+ * A security controller relying on Java {@link Policy} in effect. When you use this security
+ * controller, your securityDomain objects must be instances of {@link CodeSource} representing the
+ * location from where you load your scripts. Any Java policy "grant" statements matching the URL
+ * and certificate in code sources will apply to the scripts. If you specify any certificates within
+ * your {@link CodeSource} objects, it is your responsibility to verify (or not) that the script
+ * source files are signed in whatever implementation-specific way you're using.
  *
  * @author Attila Szegedi
  */
@@ -32,17 +35,15 @@ public class PolicySecurityController extends SecurityController {
     // need to have one renderer per class loader. We're using weak hash maps
     // and soft references all the way, since we don't want to interfere with
     // cleanup of either CodeSource or ClassLoader objects.
-    private static final Map<CodeSource, Map<ClassLoader, SoftReference<SecureCaller>>>
-            callers =
-            new WeakHashMap<CodeSource, Map<ClassLoader, SoftReference<SecureCaller>>>();
+    private static final Map<CodeSource, Map<ClassLoader, SoftReference<SecureCaller>>> callers =
+            new WeakHashMap<>();
 
     @Override
     public Class<?> getStaticSecurityDomainClassInternal() {
         return CodeSource.class;
     }
 
-    private static class Loader extends SecureClassLoader
-            implements GeneratedClassLoader {
+    private static class Loader extends SecureClassLoader implements GeneratedClassLoader {
         private final CodeSource codeSource;
 
         Loader(ClassLoader parent, CodeSource codeSource) {
@@ -62,15 +63,16 @@ public class PolicySecurityController extends SecurityController {
     }
 
     @Override
-    public GeneratedClassLoader createClassLoader(final ClassLoader parent,
-                                                  final Object securityDomain) {
-        return (Loader) AccessController.doPrivileged(
-                new PrivilegedAction<Object>() {
-                    @Override
-                    public Object run() {
-                        return new Loader(parent, (CodeSource) securityDomain);
-                    }
-                });
+    public GeneratedClassLoader createClassLoader(
+            final ClassLoader parent, final Object securityDomain) {
+        return (Loader)
+                AccessController.doPrivileged(
+                        new PrivilegedAction<Object>() {
+                            @Override
+                            public Object run() {
+                                return new Loader(parent, (CodeSource) securityDomain);
+                            }
+                        });
     }
 
     @Override
@@ -81,24 +83,30 @@ public class PolicySecurityController extends SecurityController {
     }
 
     @Override
-    public Object callWithDomain(final Object securityDomain, final Context cx,
-                                 Callable callable, Scriptable scope, Scriptable thisObj,
-                                 Object[] args) {
+    public Object callWithDomain(
+            final Object securityDomain,
+            final Context cx,
+            Callable callable,
+            Scriptable scope,
+            Scriptable thisObj,
+            Object[] args) {
         // Run in doPrivileged as we might be checked for "getClassLoader"
         // runtime permission
-        final ClassLoader classLoader = (ClassLoader) AccessController.doPrivileged(
-                new PrivilegedAction<Object>() {
-                    @Override
-                    public Object run() {
-                        return cx.getApplicationClassLoader();
-                    }
-                });
+        final ClassLoader classLoader =
+                (ClassLoader)
+                        AccessController.doPrivileged(
+                                new PrivilegedAction<Object>() {
+                                    @Override
+                                    public Object run() {
+                                        return cx.getApplicationClassLoader();
+                                    }
+                                });
         final CodeSource codeSource = (CodeSource) securityDomain;
         Map<ClassLoader, SoftReference<SecureCaller>> classLoaderMap;
         synchronized (callers) {
             classLoaderMap = callers.get(codeSource);
             if (classLoaderMap == null) {
-                classLoaderMap = new WeakHashMap<ClassLoader, SoftReference<SecureCaller>>();
+                classLoaderMap = new WeakHashMap<>();
                 callers.put(codeSource, classLoaderMap);
             }
         }
@@ -114,19 +122,23 @@ public class PolicySecurityController extends SecurityController {
                 try {
                     // Run in doPrivileged as we'll be checked for
                     // "createClassLoader" runtime permission
-                    caller = (SecureCaller) AccessController.doPrivileged(
-                            new PrivilegedExceptionAction<Object>() {
-                                @Override
-                                public Object run() throws Exception {
-                                    Loader loader = new Loader(classLoader,
-                                            codeSource);
-                                    Class<?> c = loader.defineClass(
-                                            SecureCaller.class.getName() + "Impl",
-                                            secureCallerImplBytecode);
-                                    return c.newInstance();
-                                }
-                            });
-                    classLoaderMap.put(classLoader, new SoftReference<SecureCaller>(caller));
+                    caller =
+                            (SecureCaller)
+                                    AccessController.doPrivileged(
+                                            new PrivilegedExceptionAction<Object>() {
+                                                @Override
+                                                public Object run() throws Exception {
+                                                    Loader loader =
+                                                            new Loader(classLoader, codeSource);
+                                                    Class<?> c =
+                                                            loader.defineClass(
+                                                                    SecureCaller.class.getName()
+                                                                            + "Impl",
+                                                                    secureCallerImplBytecode);
+                                                    return c.getDeclaredConstructor().newInstance();
+                                                }
+                                            });
+                    classLoaderMap.put(classLoader, new SoftReference<>(caller));
                 } catch (PrivilegedActionException ex) {
                     throw new UndeclaredThrowableException(ex.getCause());
                 }
@@ -136,37 +148,37 @@ public class PolicySecurityController extends SecurityController {
     }
 
     public abstract static class SecureCaller {
-        public abstract Object call(Callable callable, Context cx, Scriptable scope,
-                                    Scriptable thisObj, Object[] args);
+        public abstract Object call(
+                Callable callable, Context cx, Scriptable scope, Scriptable thisObj, Object[] args);
     }
-
 
     private static byte[] loadBytecode() {
         String secureCallerClassName = SecureCaller.class.getName();
-        ClassFileWriter cfw = new ClassFileWriter(
-                secureCallerClassName + "Impl", secureCallerClassName,
-                "<generated>");
+        ClassFileWriter cfw =
+                new ClassFileWriter(
+                        secureCallerClassName + "Impl", secureCallerClassName, "<generated>");
         cfw.startMethod("<init>", "()V", ClassFileWriter.ACC_PUBLIC);
         cfw.addALoad(0);
-        cfw.addInvoke(ByteCode.INVOKESPECIAL, secureCallerClassName,
-                "<init>", "()V");
+        cfw.addInvoke(ByteCode.INVOKESPECIAL, secureCallerClassName, "<init>", "()V");
         cfw.add(ByteCode.RETURN);
         cfw.stopMethod((short) 1);
         String callableCallSig =
-                "Lorg/mozilla/javascript/Context;" +
-                        "Lorg/mozilla/javascript/Scriptable;" +
-                        "Lorg/mozilla/javascript/Scriptable;" +
-                        "[Ljava/lang/Object;)Ljava/lang/Object;";
+                "Lorg/mozilla/javascript/Context;"
+                        + "Lorg/mozilla/javascript/Scriptable;"
+                        + "Lorg/mozilla/javascript/Scriptable;"
+                        + "[Ljava/lang/Object;)Ljava/lang/Object;";
 
-        cfw.startMethod("call",
+        cfw.startMethod(
+                "call",
                 "(Lorg/mozilla/javascript/Callable;" + callableCallSig,
-                (short) (ClassFileWriter.ACC_PUBLIC
-                        | ClassFileWriter.ACC_FINAL));
+                (short) (ClassFileWriter.ACC_PUBLIC | ClassFileWriter.ACC_FINAL));
         for (int i = 1; i < 6; ++i) {
             cfw.addALoad(i);
         }
-        cfw.addInvoke(ByteCode.INVOKEINTERFACE,
-                "org/mozilla/javascript/Callable", "call",
+        cfw.addInvoke(
+                ByteCode.INVOKEINTERFACE,
+                "org/mozilla/javascript/Callable",
+                "call",
                 "(" + callableCallSig);
         cfw.add(ByteCode.ARETURN);
         cfw.stopMethod((short) 6);

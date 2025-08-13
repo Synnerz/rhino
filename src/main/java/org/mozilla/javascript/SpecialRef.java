@@ -23,8 +23,7 @@ class SpecialRef extends Ref {
         this.name = name;
     }
 
-    static Ref createSpecial(Context cx, Scriptable scope, Object object,
-                             String name) {
+    static Ref createSpecial(Context cx, Scriptable scope, Object object, String name) {
         Scriptable target = ScriptRuntime.toObjectOrNull(cx, object, scope);
         if (target == null) {
             throw ScriptRuntime.undefReadError(object, name);
@@ -51,7 +50,7 @@ class SpecialRef extends Ref {
     public Object get(Context cx) {
         switch (type) {
             case SPECIAL_NONE:
-                return ScriptRuntime.getObjectProp(target, name, cx, false);
+                return ScriptRuntime.getObjectProp(target, name, cx);
             case SPECIAL_PROTO:
                 return target.getPrototype();
             case SPECIAL_PARENT:
@@ -71,33 +70,68 @@ class SpecialRef extends Ref {
     public Object set(Context cx, Scriptable scope, Object value) {
         switch (type) {
             case SPECIAL_NONE:
-                return ScriptRuntime.setObjectProp(target, name, value, cx, false);
+                return ScriptRuntime.setObjectProp(target, name, value, cx);
             case SPECIAL_PROTO:
-            case SPECIAL_PARENT: {
-                Scriptable obj = ScriptRuntime.toObjectOrNull(cx, value, scope);
-                if (obj != null) {
-                    // Check that obj does not contain on its prototype/scope
-                    // chain to prevent cycles
-                    Scriptable search = obj;
-                    do {
-                        if (search == target) {
-                            throw Context.reportRuntimeError1(
-                                    "msg.cyclic.value", name);
+            case SPECIAL_PARENT:
+                {
+                    Scriptable obj = ScriptRuntime.toObjectOrNull(cx, value, scope);
+                    if (obj != null) {
+                        // Check that obj does not contain on its prototype/scope
+                        // chain to prevent cycles
+                        Scriptable search = obj;
+                        do {
+                            if (search == target) {
+                                throw Context.reportRuntimeErrorById("msg.cyclic.value", name);
+                            }
+                            if (type == SPECIAL_PROTO) {
+                                search = search.getPrototype();
+                            } else {
+                                search = search.getParentScope();
+                            }
+                        } while (search != null);
+                    }
+                    if (type == SPECIAL_PROTO) {
+                        if (target instanceof ScriptableObject
+                                && !((ScriptableObject) target).isExtensible()
+                                && cx.getLanguageVersion() >= Context.VERSION_1_8) {
+                            throw ScriptRuntime.typeErrorById("msg.not.extensible");
                         }
-                        if (type == SPECIAL_PROTO) {
-                            search = search.getPrototype();
+
+                        if (cx.getLanguageVersion() >= Context.VERSION_ES6) {
+                            final String typeOfTarget = ScriptRuntime.typeof(target);
+                            if ("function".equals(typeOfTarget)) {
+                                if (value == null) {
+                                    target.setPrototype(Undefined.SCRIPTABLE_UNDEFINED);
+                                    return value;
+                                }
+
+                                final String typeOfValue = ScriptRuntime.typeof(value);
+                                if ("object".equals(typeOfValue)
+                                        || "function".equals(typeOfValue)) {
+                                    target.setPrototype(obj);
+                                }
+                                return value;
+                            }
+
+                            final String typeOfValue = ScriptRuntime.typeof(value);
+                            if (NativeSymbol.TYPE_NAME.equals(typeOfTarget)) {
+                                return value;
+                            }
+
+                            if ((value != null && !"object".equals(typeOfValue))
+                                    || !"object".equals(typeOfTarget)) {
+                                return Undefined.instance;
+                            }
+
+                            target.setPrototype(obj);
                         } else {
-                            search = search.getParentScope();
+                            target.setPrototype(obj);
                         }
-                    } while (search != null);
+                    } else {
+                        target.setParentScope(obj);
+                    }
+                    return obj;
                 }
-                if (type == SPECIAL_PROTO) {
-                    target.setPrototype(obj);
-                } else {
-                    target.setParentScope(obj);
-                }
-                return obj;
-            }
             default:
                 throw Kit.codeBug();
         }
@@ -119,4 +153,3 @@ class SpecialRef extends Ref {
         return false;
     }
 }
-

@@ -6,34 +6,54 @@
 
 package org.mozilla.javascript;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import org.mozilla.javascript.debug.DebuggableObject;
 
-import java.util.*;
-
 /**
- * An object that implements deep equality test of objects, including their
- * reference graph topology, that is in addition to establishing by-value
- * equality of objects, it also establishes that their reachable object graphs
- * have identical shape. It is capable of custom-comparing a wide range of
- * various objects, including various Rhino Scriptables, Java arrays, Java
- * Lists, and to some degree Java Maps and Sets (sorted Maps are okay, as well
- * as Sets with elements that can be sorted using their Comparable
- * implementation, and Maps whose keysets work the same). The requirement for
- * sortable maps and sets is to ensure deterministic order of traversal, which
- * is necessary for establishing structural equality of object graphs.
- * <p>
- * An instance of this object is stateful in that it memoizes pairs of objects
- * that already compared equal, so reusing an instance for repeated equality
- * tests of potentially overlapping object graph is beneficial for performance
- * as long as all equality test invocations returns true. Reuse is not advised
- * after an equality test returned false since there is a heuristic in comparing
- * cyclic data structures that can memoize false equalities if two cyclic data
- * structures end up being unequal.
+ * An object that implements deep equality test of objects, including their reference graph
+ * topology, that is in addition to establishing by-value equality of objects, it also establishes
+ * that their reachable object graphs have identical shape. It is capable of custom-comparing a wide
+ * range of various objects, including various Rhino Scriptables, Java arrays, Java Lists, and to
+ * some degree Java Maps and Sets (sorted Maps are okay, as well as Sets with elements that can be
+ * sorted using their Comparable implementation, and Maps whose keysets work the same). The
+ * requirement for sortable maps and sets is to ensure deterministic order of traversal, which is
+ * necessary for establishing structural equality of object graphs.
+ *
+ * <p>An instance of this object is stateful in that it memoizes pairs of objects that already
+ * compared equal, so reusing an instance for repeated equality tests of potentially overlapping
+ * object graph is beneficial for performance as long as all equality test invocations returns true.
+ * Reuse is not advised after an equality test returned false since there is a heuristic in
+ * comparing cyclic data structures that can memoize false equalities if two cyclic data structures
+ * end up being unequal.
  */
 final class EqualObjectGraphs {
     private static final ThreadLocal<EqualObjectGraphs> instance = new ThreadLocal<>();
 
-    // Object pairs already known to be equal. Used to short-circuit repeated traversals of objects reachable through
+    private static final Set<Class<?>> valueClasses =
+            Collections.unmodifiableSet(
+                    new HashSet<>(
+                            Arrays.asList(
+                                    Boolean.class,
+                                    Byte.class,
+                                    Character.class,
+                                    Double.class,
+                                    Float.class,
+                                    Integer.class,
+                                    Long.class,
+                                    Short.class)));
+
+    // Object pairs already known to be equal. Used to short-circuit repeated traversals of objects
+    // reachable through
     // different paths as well as to detect structural inequality.
     private final Map<Object, Object> knownEquals = new IdentityHashMap<>();
     // Currently compared objects; used to avoid infinite recursion over cyclic object graphs.
@@ -58,14 +78,29 @@ final class EqualObjectGraphs {
             return true;
         } else if (o1 == null || o2 == null) {
             return false;
+            // String (and ConsStrings), Booleans, and Doubles are considered
+            // JavaScript primitive values and are thus compared by value and
+            // with no regard to their object identity.
+        } else if (o1 instanceof String) {
+            if (o2 instanceof ConsString) {
+                return o1.equals(o2.toString());
+            }
+            return o1.equals(o2);
+        } else if (o1 instanceof ConsString) {
+            if (o2 instanceof String || o2 instanceof ConsString) {
+                return o1.toString().equals(o2.toString());
+            }
+            return false;
+        } else if (valueClasses.contains(o1.getClass())) {
+            return o1.equals(o2);
         }
 
         final Object curr2 = currentlyCompared.get(o1);
         if (curr2 == o2) {
             // Provisionally afford that if we're already recursively comparing
-            // (o1, o2) that they'll be equal. NOTE: this is the heuristic 
-            // mentioned in the class JavaDoc that can drive memoizing false 
-            // equalities if cyclic data structures end up being unequal. 
+            // (o1, o2) that they'll be equal. NOTE: this is the heuristic
+            // mentioned in the class JavaDoc that can drive memoizing false
+            // equalities if cyclic data structures end up being unequal.
             // While it would be possible to fix that with additional code, the
             // usual usage of equality comparisons is short-circuit-on-false anyway,
             // so this edge case should not arise in normal usage and the additional
@@ -105,15 +140,16 @@ final class EqualObjectGraphs {
 
     private boolean equalGraphsNoMemo(Object o1, Object o2) {
         if (o1 instanceof Wrapper) {
-            return o2 instanceof Wrapper && equalGraphs(((Wrapper) o1).unwrap(), ((Wrapper) o2).unwrap());
+            return o2 instanceof Wrapper
+                    && equalGraphs(((Wrapper) o1).unwrap(), ((Wrapper) o2).unwrap());
+        } else if (o1 instanceof NativeJavaTopPackage) {
+            // stateless objects, must check before Scriptable
+            return o2 instanceof NativeJavaTopPackage;
         } else if (o1 instanceof Scriptable) {
             return o2 instanceof Scriptable && equalScriptables((Scriptable) o1, (Scriptable) o2);
-        } else if (o1 instanceof ConsString) {
-            return ((ConsString) o1).toString().equals(o2);
-        } else if (o2 instanceof ConsString) {
-            return o1.equals(((ConsString) o2).toString());
         } else if (o1 instanceof SymbolKey) {
-            return o2 instanceof SymbolKey && equalGraphs(((SymbolKey) o1).getName(), ((SymbolKey) o2).getName());
+            return o2 instanceof SymbolKey
+                    && equalGraphs(((SymbolKey) o1).getName(), ((SymbolKey) o2).getName());
         } else if (o1 instanceof Object[]) {
             return o2 instanceof Object[] && equalObjectArrays((Object[]) o1, (Object[]) o2);
         } else if (o1.getClass().isArray()) {
@@ -128,8 +164,6 @@ final class EqualObjectGraphs {
             return o2 instanceof NativeGlobal; // stateless objects
         } else if (o1 instanceof JavaAdapter) {
             return o2 instanceof JavaAdapter; // stateless objects
-        } else if (o1 instanceof NativeJavaTopPackage) {
-            return o2 instanceof NativeJavaTopPackage; // stateless objects
         }
 
         // Fallback case for everything else.
@@ -156,19 +190,30 @@ final class EqualObjectGraphs {
 
         // Handle special Scriptable implementations
         if (s1 instanceof NativeContinuation) {
-            return s2 instanceof NativeContinuation && NativeContinuation.equalImplementations((NativeContinuation) s1, (NativeContinuation) s2);
+            return s2 instanceof NativeContinuation
+                    && NativeContinuation.equalImplementations(
+                            (NativeContinuation) s1, (NativeContinuation) s2);
         } else if (s1 instanceof NativeJavaPackage) {
             return s1.equals(s2); // Overridden appropriately
         } else if (s1 instanceof IdFunctionObject) {
-            return s2 instanceof IdFunctionObject && IdFunctionObject.equalObjectGraphs((IdFunctionObject) s1, (IdFunctionObject) s2, this);
+            return s2 instanceof IdFunctionObject
+                    && IdFunctionObject.equalObjectGraphs(
+                            (IdFunctionObject) s1, (IdFunctionObject) s2, this);
         } else if (s1 instanceof InterpretedFunction) {
-            return s2 instanceof InterpretedFunction && equalInterpretedFunctions((InterpretedFunction) s1, (InterpretedFunction) s2);
+            return s2 instanceof InterpretedFunction
+                    && equalInterpretedFunctions(
+                            (InterpretedFunction) s1, (InterpretedFunction) s2);
         } else if (s1 instanceof ArrowFunction) {
-            return s2 instanceof ArrowFunction && ArrowFunction.equalObjectGraphs((ArrowFunction) s1, (ArrowFunction) s2, this);
+            return s2 instanceof ArrowFunction
+                    && ArrowFunction.equalObjectGraphs(
+                            (ArrowFunction) s1, (ArrowFunction) s2, this);
         } else if (s1 instanceof BoundFunction) {
-            return s2 instanceof BoundFunction && BoundFunction.equalObjectGraphs((BoundFunction) s1, (BoundFunction) s2, this);
+            return s2 instanceof BoundFunction
+                    && BoundFunction.equalObjectGraphs(
+                            (BoundFunction) s1, (BoundFunction) s2, this);
         } else if (s1 instanceof NativeSymbol) {
-            return s2 instanceof NativeSymbol && equalGraphs(((NativeSymbol) s1).getKey(), ((NativeSymbol) s2).getKey());
+            return s2 instanceof NativeSymbol
+                    && equalGraphs(((NativeSymbol) s1).getKey(), ((NativeSymbol) s2).getKey());
         }
         return true;
     }
@@ -211,19 +256,20 @@ final class EqualObjectGraphs {
         while (i1.hasNext() && i2.hasNext()) {
             final Map.Entry kv1 = i1.next();
             final Map.Entry kv2 = i2.next();
-            if (!(equalGraphs(kv1.getKey(), kv2.getKey()) && equalGraphs(kv1.getValue(), kv2.getValue()))) {
+            if (!(equalGraphs(kv1.getKey(), kv2.getKey())
+                    && equalGraphs(kv1.getValue(), kv2.getValue()))) {
                 return false;
             }
         }
         assert !(i1.hasNext() || i2.hasNext());
         // TODO: assert linked maps traversal order?
         return true;
-
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static Iterator<Map.Entry> sortedEntries(final Map m) {
-        // Yes, this throws ClassCastException if the keys aren't comparable. That's okay. We only support maps with 
+        // Yes, this throws ClassCastException if the keys aren't comparable. That's okay. We only
+        // support maps with
         // deterministic traversal order.
         final Map sortedMap = (m instanceof SortedMap<?, ?> ? m : new TreeMap(m));
         return sortedMap.entrySet().iterator();
@@ -239,41 +285,44 @@ final class EqualObjectGraphs {
         return a;
     }
 
-    private static boolean equalInterpretedFunctions(final InterpretedFunction f1, final InterpretedFunction f2) {
+    private static boolean equalInterpretedFunctions(
+            final InterpretedFunction f1, final InterpretedFunction f2) {
         return Objects.equals(f1.getEncodedSource(), f2.getEncodedSource());
     }
 
     // Sort IDs deterministically
     private static Object[] getSortedIds(final Scriptable s) {
         final Object[] ids = getIds(s);
-        Arrays.sort(ids, (a, b) -> {
-            if (a instanceof Integer) {
-                if (b instanceof Integer) {
-                    return ((Integer) a).compareTo((Integer) b);
-                } else if (b instanceof String || b instanceof Symbol) {
-                    return -1; // ints before strings or symbols
-                }
-            } else if (a instanceof String) {
-                if (b instanceof String) {
-                    return ((String) a).compareTo((String) b);
-                } else if (b instanceof Integer) {
-                    return 1; // strings after ints
-                } else if (b instanceof Symbol) {
-                    return -1; // strings before symbols
-                }
-            } else if (a instanceof Symbol) {
-                if (b instanceof Symbol) {
-                    // As long as people bother to reasonably name their symbols,
-                    // this will work. If there's clashes in symbol names (e.g.
-                    // lots of unnamed symbols) it can lead to false inequalities.
-                    return getSymbolName((Symbol) a).compareTo(getSymbolName((Symbol) b));
-                } else if (b instanceof Integer || b instanceof String) {
-                    return 1; // symbols after ints and strings
-                }
-            }
-            // We can only compare Rhino key types: Integer, String, Symbol
-            throw new ClassCastException();
-        });
+        Arrays.sort(
+                ids,
+                (a, b) -> {
+                    if (a instanceof Integer) {
+                        if (b instanceof Integer) {
+                            return ((Integer) a).compareTo((Integer) b);
+                        } else if (b instanceof String || b instanceof Symbol) {
+                            return -1; // ints before strings or symbols
+                        }
+                    } else if (a instanceof String) {
+                        if (b instanceof String) {
+                            return ((String) a).compareTo((String) b);
+                        } else if (b instanceof Integer) {
+                            return 1; // strings after ints
+                        } else if (b instanceof Symbol) {
+                            return -1; // strings before symbols
+                        }
+                    } else if (a instanceof Symbol) {
+                        if (b instanceof Symbol) {
+                            // As long as people bother to reasonably name their symbols,
+                            // this will work. If there's clashes in symbol names (e.g.
+                            // lots of unnamed symbols) it can lead to false inequalities.
+                            return getSymbolName((Symbol) a).compareTo(getSymbolName((Symbol) b));
+                        } else if (b instanceof Integer || b instanceof String) {
+                            return 1; // symbols after ints and strings
+                        }
+                    }
+                    // We can only compare Rhino key types: Integer, String, Symbol
+                    throw new ClassCastException();
+                });
         return ids;
     }
 
@@ -303,7 +352,7 @@ final class EqualObjectGraphs {
         if (id instanceof Symbol) {
             return ScriptableObject.getProperty(s, (Symbol) id);
         } else if (id instanceof Integer) {
-            return ScriptableObject.getProperty(s, id);
+            return ScriptableObject.getProperty(s, (Integer) id);
         } else if (id instanceof String) {
             return ScriptableObject.getProperty(s, (String) id);
         } else {

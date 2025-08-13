@@ -26,7 +26,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
             ctor.sealObject();
         }
 
-        defineProperty(scope, "Proxy", ctor, ScriptableObject.NOT_ENUMERABLE);
+        defineProperty(scope, "Proxy", ctor, ScriptableObject.DONTENUM);
     }
 
     NativeProxy(ScriptableObject target, ScriptableObject handler) {
@@ -89,7 +89,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(name, target)) {
             int attributes = target.getAttributes(name);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object targetRes = target.get(name);
 
                 if (result != targetRes) {
@@ -123,7 +123,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(index, target)) {
             int attributes = target.getAttributes(index);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object targetRes = target.get(index);
 
                 if (result != targetRes) {
@@ -157,7 +157,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(key, target)) {
             int attributes = target.getAttributes(key);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object targetRes = target.get(key);
 
                 if (result != targetRes) {
@@ -183,9 +183,9 @@ public class NativeProxy extends IdScriptableObject implements Function {
 
             Object getter = target.getGetterOrSetter(name, 0, false);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
+            if ((attributes & PERMANENT) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.set.accessor", name);
-            } else if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            } else if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object oldVal = target.get(name);
 
                 if (oldVal != value) {
@@ -219,9 +219,9 @@ public class NativeProxy extends IdScriptableObject implements Function {
 
             Object getter = target.getGetterOrSetter((String) null, index, false);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
+            if ((attributes & PERMANENT) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.set.accessor", index);
-            } else if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            } else if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object oldVal = target.get(index);
 
                 if (oldVal != value) {
@@ -242,6 +242,16 @@ public class NativeProxy extends IdScriptableObject implements Function {
     }
 
     @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
     public void put(Symbol key, Scriptable start, Object value) {
         ensureNotRevoked();
 
@@ -252,11 +262,11 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(key, target)) {
             int attributes = target.getAttributes(key);
 
-            Object getter = target.getGetterOrSetter(key, 0, false);
+            Object getter = target.getGetterOrSetter(key.toString(), 0, false);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
+            if ((attributes & PERMANENT) != 0 && (getter != null || getter != Undefined.instance) && ScriptableObject.hasProperty(target, "set")) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.set.accessor", key);
-            } else if ((attributes & NOT_CONFIGURABLE) != 0 && (attributes & NOT_WRITABLE) != 0) {
+            } else if ((attributes & PERMANENT) != 0 && (attributes & READONLY) != 0) {
                 Object oldVal = target.get(key);
 
                 if (oldVal != value) {
@@ -304,7 +314,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(name, target)) {
             int attributes = target.getAttributes(name);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && !handlerResult) {
+            if ((attributes & PERMANENT) != 0 && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.configurable", name);
             } else if (!target.isExtensible() && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.extensible", name);
@@ -342,7 +352,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(index, target)) {
             int attributes = target.getAttributes(index);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && !handlerResult) {
+            if ((attributes & PERMANENT) != 0 && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.configurable", index);
             } else if (!target.isExtensible() && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.extensible", index);
@@ -380,7 +390,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (target.has(key, target)) {
             int attributes = target.getAttributes(key);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0 && !handlerResult) {
+            if ((attributes & PERMANENT) != 0 && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.configurable", key);
             } else if (!target.isExtensible() && !handlerResult) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.has.non.extensible", key);
@@ -418,7 +428,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (result && target.has(name, target)) {
             int attributes = target.getAttributes(name);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0) {
+            if ((attributes & PERMANENT) != 0) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.delete", name);
             }
         }
@@ -453,7 +463,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (result && target.has(key, target)) {
             int attributes = target.getAttributes(key);
 
-            if ((attributes & NOT_CONFIGURABLE) != 0) {
+            if ((attributes & PERMANENT) != 0) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.delete", key);
             }
         }
@@ -464,7 +474,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         ensureNotRevoked();
 
         if (!handlerIds.contains("getOwnPropertyDescriptor")) {
-            return target.getOwnPropertyDescriptor(cx, id);
+            return super.getOwnPropertyDescriptor(cx, id);
         }
 
         Object getOwnPropertyDescriptor = handler.get("getOwnPropertyDescriptor");
@@ -496,7 +506,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         }
 
         // invariant 2
-        if (_result == Undefined.instance && exists && (targetDesc & NOT_CONFIGURABLE) != 0) {
+        if (_result == Undefined.instance && exists && (targetDesc & PERMANENT) != 0) {
             throw ScriptRuntime.typeError1("msg.proxy.invariant.getdescriptor.inv2", ScriptRuntime.toString(id));
         }
 
@@ -521,7 +531,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (!configurable) {
             if (!exists) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.getdescriptor.inv5.non.existant", ScriptRuntime.toString(id));
-            } else if ((targetDesc & NOT_CONFIGURABLE) == 0) {
+            } else if ((targetDesc & PERMANENT) == 0) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.getdescriptor.inv5.existant", ScriptRuntime.toString(id));
             }
         }
@@ -573,7 +583,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         if (!isConfigurable) {
             int attributes = getAttributes(target, id);
 
-            if (attributes != -1 && (attributes & NOT_CONFIGURABLE) == 0) {
+            if (attributes != -1 && (attributes & PERMANENT) == 0) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.defineprop.non.configurable", ScriptRuntime.toString(id));
             }
         }
@@ -717,7 +727,7 @@ public class NativeProxy extends IdScriptableObject implements Function {
         for (Object targetId : targetIds) {
             int attributes = getAttributes(target, targetId);
 
-            if (attributes != -1 && (attributes & NOT_CONFIGURABLE) != 0) {
+            if (attributes != -1 && (attributes & PERMANENT) != 0) {
                 throw ScriptRuntime.typeError1("msg.proxy.invariant.ownkeys.skip.prop", ScriptRuntime.toString(targetId));
             }
         }

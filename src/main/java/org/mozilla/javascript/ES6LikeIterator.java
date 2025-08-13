@@ -28,4 +28,14 @@ public class ES6LikeIterator extends ES6Iterator {
     public String getClassName() {
         return "Iterator";
     }
+
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
 }

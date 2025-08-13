@@ -5,7 +5,7 @@ import org.mozilla.javascript.*;
 public class InitializeDecorator extends Decorator {
     public static void init(Scriptable scope) {
         InitializeDecorator initialize = new InitializeDecorator();
-        ScriptableObject.defineProperty(scope, "@initialize", initialize, ScriptableObject.NOT_ENUMERABLE);
+        ScriptableObject.defineProperty(scope, "@initialize", initialize, ScriptableObject.DONTENUM);
     }
 
     @Override
@@ -34,11 +34,11 @@ public class InitializeDecorator extends Decorator {
 
         if ((descriptor & PUBLIC) != 0 && (descriptor & CLASS) == 0) {
             // public field/method
-            key = sTarget.hasAssociatedValue(NAME_KEY) ? sTarget.getAssociatedValue(NAME_KEY) : Undefined.instance;
+//            key = sTarget.hasAssociatedValue(NAME_KEY) ? sTarget.getAssociatedValue(NAME_KEY) : Undefined.instance;
 
             if ((descriptor & METHOD) == 0) {
                 // public field
-                value = sTarget.hasAssociatedValue(VALUE_KEY) ? sTarget.getAssociatedValue(VALUE_KEY) : Undefined.instance;
+//                value = sTarget.hasAssociatedValue(VALUE_KEY) ? sTarget.getAssociatedValue(VALUE_KEY) : Undefined.instance;
             }
         }
 

@@ -12,14 +12,13 @@ import org.mozilla.javascript.UintMap;
 final class ConstantPool {
     ConstantPool(ClassFileWriter cfw) {
         this.cfw = cfw;
-        itsTopIndex = 1;       // the zero'th entry is reserved
+        itsTopIndex = 1; // the zero'th entry is reserved
         itsPool = new byte[ConstantPoolSize];
         itsTop = 0;
     }
 
     private static final int ConstantPoolSize = 256;
-    static final byte
-            CONSTANT_Class = 7,
+    static final byte CONSTANT_Class = 7,
             CONSTANT_Fieldref = 9,
             CONSTANT_Methodref = 10,
             CONSTANT_InterfaceMethodref = 11,
@@ -98,8 +97,7 @@ final class ConstantPool {
     }
 
     int addConstant(Object value) {
-        if (value instanceof Integer || value instanceof Byte
-                || value instanceof Short) {
+        if (value instanceof Integer || value instanceof Byte || value instanceof Short) {
             return addConstant(((Number) value).intValue());
         } else if (value instanceof Character) {
             return addConstant(((Character) value).charValue());
@@ -113,7 +111,7 @@ final class ConstantPool {
             return addConstant(((Double) value).doubleValue());
         } else if (value instanceof String) {
             return addConstant((String) value);
-            //} else if (value instanceof ClassFileWriter.MethodType) {
+            // } else if (value instanceof ClassFileWriter.MethodType) {
             //    return addMethodType((ClassFileWriter.MethodType) value);
         } else if (value instanceof ClassFileWriter.MHandle) {
             return addMethodHandle((ClassFileWriter.MHandle) value);
@@ -121,7 +119,6 @@ final class ConstantPool {
             throw new IllegalArgumentException("value " + value);
         }
     }
-
 
     boolean isUnderUtfEncodingLimit(String s) {
         int strLen = s.length();
@@ -134,8 +131,8 @@ final class ConstantPool {
     }
 
     /**
-     * Get maximum i such that <code>start <= i <= end</code> and
-     * <code>s.substring(start, i)</code> fits JVM UTF string encoding limit.
+     * Get maximum i such that <code>start <= i <= end</code> and <code>s.substring(start, i)</code>
+     * fits JVM UTF string encoding limit.
      */
     int getUtfEncodingLimit(String s, int start, int end) {
         if ((end - start) * 3 <= MAX_UTF_ENCODING_SIZE) {
@@ -254,8 +251,7 @@ final class ConstantPool {
     }
 
     short addFieldRef(String className, String fieldName, String fieldType) {
-        FieldOrMethodRef ref = new FieldOrMethodRef(className, fieldName,
-                fieldType);
+        FieldOrMethodRef ref = new FieldOrMethodRef(className, fieldName, fieldType);
 
         int theIndex = itsFieldRefHash.get(ref, -1);
         if (theIndex == -1) {
@@ -273,10 +269,8 @@ final class ConstantPool {
         return (short) theIndex;
     }
 
-    short addMethodRef(String className, String methodName,
-                       String methodType) {
-        FieldOrMethodRef ref = new FieldOrMethodRef(className, methodName,
-                methodType);
+    short addMethodRef(String className, String methodName, String methodType) {
+        FieldOrMethodRef ref = new FieldOrMethodRef(className, methodName, methodType);
 
         int theIndex = itsMethodRefHash.get(ref, -1);
         if (theIndex == -1) {
@@ -294,24 +288,22 @@ final class ConstantPool {
         return (short) theIndex;
     }
 
-    short addInterfaceMethodRef(String className,
-                                String methodName, String methodType) {
+    short addInterfaceMethodRef(String className, String methodName, String methodType) {
         short ntIndex = addNameAndType(methodName, methodType);
         short classIndex = addClass(className);
         ensure(5);
         itsPool[itsTop++] = CONSTANT_InterfaceMethodref;
         itsTop = ClassFileWriter.putInt16(classIndex, itsPool, itsTop);
         itsTop = ClassFileWriter.putInt16(ntIndex, itsPool, itsTop);
-        FieldOrMethodRef r = new FieldOrMethodRef(className, methodName,
-                methodType);
+        FieldOrMethodRef r = new FieldOrMethodRef(className, methodName, methodType);
         setConstantData(itsTopIndex, r);
         itsPoolTypes.put(itsTopIndex, CONSTANT_InterfaceMethodref);
         return (short) (itsTopIndex++);
     }
 
     short addInvokeDynamic(String methodName, String methodType, int bootstrapIndex) {
-        ConstantEntry entry = new ConstantEntry(CONSTANT_InvokeDynamic,
-                bootstrapIndex, methodName, methodType);
+        ConstantEntry entry =
+                new ConstantEntry(CONSTANT_InvokeDynamic, bootstrapIndex, methodName, methodType);
         int theIndex = itsConstantHash.get(entry, -1);
 
         if (theIndex == -1) {

@@ -7,8 +7,7 @@
 package org.mozilla.classfile;
 
 final class ClassFileMethod {
-    ClassFileMethod(String name, short nameIndex, String type, short typeIndex,
-                    short flags) {
+    ClassFileMethod(String name, short nameIndex, String type, short typeIndex, short flags) {
         itsName = name;
         itsNameIndex = nameIndex;
         itsType = type;
@@ -26,8 +25,7 @@ final class ClassFileMethod {
         offset = ClassFileWriter.putInt16(itsTypeIndex, data, offset);
         // Code attribute only
         offset = ClassFileWriter.putInt16(1, data, offset);
-        System.arraycopy(itsCodeAttribute, 0, data, offset,
-                itsCodeAttribute.length);
+        System.arraycopy(itsCodeAttribute, 0, data, offset, itsCodeAttribute.length);
         offset += itsCodeAttribute.length;
         return offset;
     }
@@ -54,5 +52,4 @@ final class ClassFileMethod {
     private short itsTypeIndex;
     private short itsFlags;
     private byte[] itsCodeAttribute;
-
 }

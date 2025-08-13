@@ -9,37 +9,31 @@
 package org.mozilla.javascript;
 
 /**
- * This is a helper class for implementing wrappers around Scriptable
- * objects. It implements the Function interface and delegates all
- * invocations to a delegee Scriptable object. The normal use of this
- * class involves creating a sub-class and overriding one or more of
- * the methods.
- * <p>
- * A useful application is the implementation of interceptors,
- * pre/post conditions, debugging.
+ * This is a helper class for implementing wrappers around Scriptable objects. It implements the
+ * Function interface and delegates all invocations to a delegee Scriptable object. The normal use
+ * of this class involves creating a sub-class and overriding one or more of the methods.
  *
- * @author Matthias Radestock
+ * <p>A useful application is the implementation of interceptors, pre/post conditions, debugging.
+ *
  * @see Function
  * @see Scriptable
+ * @author Matthias Radestock
  */
-
 public class Delegator implements Function, SymbolScriptable {
+
     protected Scriptable obj = null;
 
     /**
      * Create a Delegator prototype.
-     * <p>
-     * This constructor should only be used for creating prototype
-     * objects of Delegator.
+     *
+     * <p>This constructor should only be used for creating prototype objects of Delegator.
      *
      * @see org.mozilla.javascript.Delegator#construct
      */
-    public Delegator() {
-    }
+    public Delegator() {}
 
     /**
-     * Create a new Delegator that forwards requests to a delegee
-     * Scriptable object.
+     * Create a new Delegator that forwards requests to a delegee Scriptable object.
      *
      * @param obj the delegee
      * @see org.mozilla.javascript.Scriptable
@@ -49,14 +43,13 @@ public class Delegator implements Function, SymbolScriptable {
     }
 
     /**
-     * Crete new Delegator instance.
-     * The default implementation calls this.getClass().newInstance().
+     * Crete new Delegator instance. The default implementation calls this.getClass().newInstance().
      *
      * @see #construct(Context cx, Scriptable scope, Object[] args)
      */
     protected Delegator newInstance() {
         try {
-            return this.getClass().newInstance();
+            return this.getClass().getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);
         }
@@ -81,20 +74,16 @@ public class Delegator implements Function, SymbolScriptable {
         this.obj = obj;
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#getClassName
-     */
+    /** @see org.mozilla.javascript.Scriptable#getClassName */
     @Override
     public String getClassName() {
         return getDelegee().getClassName();
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#get(String, Scriptable)
-     */
+    /** @see org.mozilla.javascript.Scriptable#get(String, Scriptable) */
     @Override
-    public Object get(String name, Scriptable start, boolean isPrivate) {
-        return getDelegee().get(name, start, isPrivate);
+    public Object get(String name, Scriptable start) {
+        return getDelegee().get(name, start);
     }
 
     @Override
@@ -106,17 +95,13 @@ public class Delegator implements Function, SymbolScriptable {
         return Scriptable.NOT_FOUND;
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#get(int, Scriptable)
-     */
+    /** @see org.mozilla.javascript.Scriptable#get(int, Scriptable) */
     @Override
     public Object get(int index, Scriptable start) {
         return getDelegee().get(index, start);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#has(String, Scriptable)
-     */
+    /** @see org.mozilla.javascript.Scriptable#has(String, Scriptable) */
     @Override
     public boolean has(String name, Scriptable start) {
         return getDelegee().has(name, start);
@@ -131,25 +116,19 @@ public class Delegator implements Function, SymbolScriptable {
         return false;
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#has(int, Scriptable)
-     */
+    /** @see org.mozilla.javascript.Scriptable#has(int, Scriptable) */
     @Override
     public boolean has(int index, Scriptable start) {
         return getDelegee().has(index, start);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#put(String, Scriptable, Object)
-     */
+    /** @see org.mozilla.javascript.Scriptable#put(String, Scriptable, Object) */
     @Override
-    public void put(String name, Scriptable start, Object value, boolean isPrivate) {
-        getDelegee().put(name, start, value, isPrivate);
+    public void put(String name, Scriptable start, Object value) {
+        getDelegee().put(name, start, value);
     }
 
-    /**
-     * @see org.mozilla.javascript.SymbolScriptable#put(Symbol, Scriptable, Object)
-     */
+    /** @see org.mozilla.javascript.SymbolScriptable#put(Symbol, Scriptable, Object) */
     @Override
     public void put(Symbol symbol, Scriptable start, Object value) {
         final Scriptable delegee = getDelegee();
@@ -158,17 +137,23 @@ public class Delegator implements Function, SymbolScriptable {
         }
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#put(int, Scriptable, Object)
-     */
+    /** @see org.mozilla.javascript.Scriptable#put(int, Scriptable, Object) */
     @Override
     public void put(int index, Scriptable start, Object value) {
         getDelegee().put(index, start, value);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#delete(String)
-     */
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    /** @see org.mozilla.javascript.Scriptable#delete(String) */
     @Override
     public void delete(String name) {
         getDelegee().delete(name);
@@ -182,60 +167,46 @@ public class Delegator implements Function, SymbolScriptable {
         }
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#delete(int)
-     */
+    /** @see org.mozilla.javascript.Scriptable#delete(int) */
     @Override
     public void delete(int index) {
         getDelegee().delete(index);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#getPrototype
-     */
+    /** @see org.mozilla.javascript.Scriptable#getPrototype */
     @Override
     public Scriptable getPrototype() {
         return getDelegee().getPrototype();
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#setPrototype
-     */
+    /** @see org.mozilla.javascript.Scriptable#setPrototype */
     @Override
     public void setPrototype(Scriptable prototype) {
         getDelegee().setPrototype(prototype);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#getParentScope
-     */
+    /** @see org.mozilla.javascript.Scriptable#getParentScope */
     @Override
     public Scriptable getParentScope() {
         return getDelegee().getParentScope();
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#setParentScope
-     */
+    /** @see org.mozilla.javascript.Scriptable#setParentScope */
     @Override
     public void setParentScope(Scriptable parent) {
         getDelegee().setParentScope(parent);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#getIds
-     */
+    /** @see org.mozilla.javascript.Scriptable#getIds */
     @Override
     public Object[] getIds() {
         return getDelegee().getIds();
     }
 
     /**
-     * Note that this method does not get forwarded to the delegee if
-     * the <code>hint</code> parameter is null,
-     * <code>ScriptRuntime.ScriptableClass</code> or
-     * <code>ScriptRuntime.FunctionClass</code>. Instead the object
-     * itself is returned.
+     * Note that this method does not get forwarded to the delegee if the <code>hint</code>
+     * parameter is null, <code>ScriptRuntime.ScriptableClass</code> or <code>
+     * ScriptRuntime.FunctionClass</code>. Instead the object itself is returned.
      *
      * @param hint the type hint
      * @return the default value
@@ -243,40 +214,34 @@ public class Delegator implements Function, SymbolScriptable {
      */
     @Override
     public Object getDefaultValue(Class<?> hint) {
-        return (hint == null ||
-                hint == ScriptRuntime.ScriptableClass ||
-                hint == ScriptRuntime.FunctionClass) ?
-                this : getDelegee().getDefaultValue(hint);
+        return (hint == null
+                        || hint == ScriptRuntime.ScriptableClass
+                        || hint == ScriptRuntime.FunctionClass)
+                ? this
+                : getDelegee().getDefaultValue(hint);
     }
 
-    /**
-     * @see org.mozilla.javascript.Scriptable#hasInstance
-     */
+    /** @see org.mozilla.javascript.Scriptable#hasInstance */
     @Override
     public boolean hasInstance(Scriptable instance) {
         return getDelegee().hasInstance(instance);
     }
 
-    /**
-     * @see org.mozilla.javascript.Function#call
-     */
+    /** @see org.mozilla.javascript.Function#call */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
-                       Object[] args) {
+    public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         return ((Function) getDelegee()).call(cx, scope, thisObj, args);
     }
 
     /**
-     * Note that if the <code>delegee</code> is <code>null</code>,
-     * this method creates a new instance of the Delegator itself
-     * rathert than forwarding the call to the
-     * <code>delegee</code>. This permits the use of Delegator
-     * prototypes.
+     * Note that if the <code>delegee</code> is <code>null</code>, this method creates a new
+     * instance of the Delegator itself rather than forwarding the call to the <code>delegee</code>
+     * . This permits the use of Delegator prototypes.
      *
-     * @param cx    the current Context for this thread
-     * @param scope an enclosing scope of the caller except
-     *              when the function is called from a closure.
-     * @param args  the array of arguments
+     * @param cx the current Context for this thread
+     * @param scope an enclosing scope of the caller except when the function is called from a
+     *     closure.
+     * @param args the array of arguments
      * @return the allocated object
      * @see Function#construct(Context, Scriptable, Object[])
      */
@@ -284,11 +249,11 @@ public class Delegator implements Function, SymbolScriptable {
     public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
         Scriptable myDelegee = getDelegee();
         if (myDelegee == null) {
-            //this little trick allows us to declare prototype objects for Delegators
+            // this little trick allows us to declare prototype objects for Delegators
             Delegator n = newInstance();
             Scriptable delegee;
             if (args.length == 0) {
-                delegee = new NativeObject();
+                delegee = cx.newObject(scope);
             } else {
                 delegee = ScriptRuntime.toObject(cx, scope, args[0]);
             }
@@ -296,15 +261,5 @@ public class Delegator implements Function, SymbolScriptable {
             return n;
         }
         return ((Function) myDelegee).construct(cx, scope, args);
-    }
-
-    @Override
-    public void declare(String name, Scriptable start) {
-        getDelegee().declare(name, start);
-    }
-
-    @Override
-    public void declareConst(String name, Scriptable start) {
-        getDelegee().declare(name, start);
     }
 }

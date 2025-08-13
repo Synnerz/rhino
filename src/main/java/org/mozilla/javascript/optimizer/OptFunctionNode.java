@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-
 package org.mozilla.javascript.optimizer;
 
 import org.mozilla.javascript.Kit;
@@ -36,8 +35,7 @@ public final class OptFunctionNode {
 
     void setDirectTargetIndex(int directTargetIndex) {
         // One time action
-        if (directTargetIndex < 0 || this.directTargetIndex >= 0)
-            Kit.codeBug();
+        if (directTargetIndex < 0 || this.directTargetIndex >= 0) Kit.codeBug();
         this.directTargetIndex = directTargetIndex;
     }
 
@@ -83,8 +81,7 @@ public final class OptFunctionNode {
             int type = n.getType();
             if (type == Token.GETVAR) {
                 node = n;
-            } else if (type == Token.SETVAR ||
-                    type == Token.SETCONSTVAR) {
+            } else if (type == Token.SETVAR || type == Token.SETCONSTVAR) {
                 node = n.getFirstChild();
             } else {
                 throw Kit.codeBug();

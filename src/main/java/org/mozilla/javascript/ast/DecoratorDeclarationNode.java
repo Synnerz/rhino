@@ -10,8 +10,8 @@ public class DecoratorDeclarationNode extends FunctionNode {
     private List<DecoratorNode> decoratorNodes = new ArrayList<>();
 
     {
-        type = Token.DECORATOR;
-        putProp(Node.DECORATOR_PROP, true);
+//        type = Token.DECORATOR;
+//        putProp(Node.DECORATOR_PROP, true);
         setRequiresActivation();
     }
 

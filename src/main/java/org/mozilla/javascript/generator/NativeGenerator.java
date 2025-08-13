@@ -75,6 +75,16 @@ public final class NativeGenerator extends IdScriptableObject {
     }
 
     @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
     protected void initPrototypeId(int id) {
         if (id == SymbolId_iterator) {
             initPrototypeMethod(GENERATOR_TAG, id, SymbolKey.ITERATOR, "[Symbol.iterator]", 0);

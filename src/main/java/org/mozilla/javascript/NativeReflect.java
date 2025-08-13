@@ -10,12 +10,22 @@ public class NativeReflect extends IdScriptableObject {
         obj.setParentScope(scope);
         if (sealed)
             obj.sealObject();
-        ScriptableObject.defineProperty(scope, "Reflect", obj, ScriptableObject.NOT_ENUMERABLE);
+        ScriptableObject.defineProperty(scope, "Reflect", obj, ScriptableObject.DONTENUM);
     }
 
     @Override
     public String getClassName() {
         return (String) REFLECT_TAG;
+    }
+
+    @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
     }
 
     @Override
@@ -155,7 +165,7 @@ public class NativeReflect extends IdScriptableObject {
         }
 
         Function target = (Function) args[0];
-        Object[] argumentsList = ScriptRuntime.createArrFromArrayLike(cx, args[1]);
+        Object[] argumentsList = ScriptRuntime.getApplyArguments(cx, args[1]);
         Function newTarget = null;
 
         if (args.length > 2) {
@@ -217,7 +227,7 @@ public class NativeReflect extends IdScriptableObject {
         if (key instanceof String) {
             return ScriptableObject.getProperty(target, (String) key);
         } else if (key instanceof Integer) {
-            return ScriptableObject.getProperty(target, key);
+            return ScriptableObject.getProperty(target, (int) key);
         } else if (key instanceof Double) {
             return ScriptableObject.getProperty(target, ((Double) key).intValue());
         } else {

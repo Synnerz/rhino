@@ -6,17 +6,17 @@
 
 package org.mozilla.javascript.ast;
 
-import org.mozilla.javascript.Kit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.mozilla.javascript.Token;
 
-import java.util.*;
-
 /**
- * AST node for an Object literal (also called an Object initialiser in
- * Ecma-262).  The elements list will always be non-{@code null}, although
- * the list will have no elements if the Object literal is empty.
+ * AST node for an Object literal (also called an Object initialiser in Ecma-262). The elements list
+ * will always be non-{@code null}, although the list will have no elements if the Object literal is
+ * empty.
  *
- * <p>Node type is {@link Token#OBJECTLIT}.</p>
+ * <p>Node type is {@link Token#OBJECTLIT}.
  *
  * <pre><i>ObjectLiteral</i> :
  *       <b>{}</b>
@@ -36,14 +36,12 @@ public class ObjectLiteral extends AstNode implements DestructuringForm {
 
     private List<ObjectProperty> elements;
     boolean isDestructuring;
-    private Map<String, AstNode> defaultValues = new HashMap<>();
 
     {
         type = Token.OBJECTLIT;
     }
 
-    public ObjectLiteral() {
-    }
+    public ObjectLiteral() {}
 
     public ObjectLiteral(int pos) {
         super(pos);
@@ -53,28 +51,23 @@ public class ObjectLiteral extends AstNode implements DestructuringForm {
         super(pos, len);
     }
 
-    /**
-     * Returns the element list.  Returns an immutable empty list if there are
-     * no elements.
-     */
+    /** Returns the element list. Returns an immutable empty list if there are no elements. */
     public List<ObjectProperty> getElements() {
         return elements != null ? elements : NO_ELEMS;
     }
 
     /**
-     * Sets the element list, and updates the parent of each element.
-     * Replaces any existing elements.
+     * Sets the element list, and updates the parent of each element. Replaces any existing
+     * elements.
      *
-     * @param elements the element list.  Can be {@code null}.
+     * @param elements the element list. Can be {@code null}.
      */
     public void setElements(List<ObjectProperty> elements) {
         if (elements == null) {
             this.elements = null;
         } else {
-            if (this.elements != null)
-                this.elements.clear();
-            for (ObjectProperty o : elements)
-                addElement(o);
+            if (this.elements != null) this.elements.clear();
+            for (ObjectProperty o : elements) addElement(o);
         }
     }
 
@@ -87,16 +80,15 @@ public class ObjectLiteral extends AstNode implements DestructuringForm {
     public void addElement(ObjectProperty element) {
         assertNotNull(element);
         if (elements == null) {
-            elements = new ArrayList<ObjectProperty>();
+            elements = new ArrayList<>();
         }
         elements.add(element);
         element.setParent(this);
     }
 
     /**
-     * Marks this node as being a destructuring form - that is, appearing
-     * in a context such as {@code for ([a, b] in ...)} where it's the
-     * target of a destructuring assignment.
+     * Marks this node as being a destructuring form - that is, appearing in a context such as
+     * {@code for ([a, b] in ...)} where it's the target of a destructuring assignment.
      */
     @Override
     public void setIsDestructuring(boolean destructuring) {
@@ -104,25 +96,12 @@ public class ObjectLiteral extends AstNode implements DestructuringForm {
     }
 
     /**
-     * Returns true if this node is in a destructuring position:
-     * a function parameter, the target of a variable initializer, the
-     * iterator of a for..in loop, etc.
+     * Returns true if this node is in a destructuring position: a function parameter, the target of
+     * a variable initializer, the iterator of a for..in loop, etc.
      */
     @Override
     public boolean isDestructuring() {
         return isDestructuring;
-    }
-
-    @Override
-    public void putDefaultValue(String key, AstNode value) {
-        if (defaultValues.containsKey(key)) Kit.codeBug("Default value map already contains value for key " + key);
-        defaultValues.put(key, value);
-    }
-
-    @Override
-    public AstNode getDefaultValue(String key) {
-        if (!defaultValues.containsKey(key)) Kit.codeBug("No default value entry for key " + key);
-        return defaultValues.get(key);
     }
 
     @Override
@@ -137,10 +116,7 @@ public class ObjectLiteral extends AstNode implements DestructuringForm {
         return sb.toString();
     }
 
-    /**
-     * Visits this node, then visits each child property node, in lexical
-     * (source) order.
-     */
+    /** Visits this node, then visits each child property node, in lexical (source) order. */
     @Override
     public void visit(NodeVisitor v) {
         if (v.visit(this)) {

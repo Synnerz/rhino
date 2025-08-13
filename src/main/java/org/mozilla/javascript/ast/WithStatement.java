@@ -9,7 +9,7 @@ package org.mozilla.javascript.ast;
 import org.mozilla.javascript.Token;
 
 /**
- * With statement.  Node type is {@link Token#WITH}.
+ * With statement. Node type is {@link Token#WITH}.
  *
  * <pre><i>WithStatement</i> :
  *      <b>with</b> ( Expression ) Statement ;</pre>
@@ -25,8 +25,7 @@ public class WithStatement extends AstNode {
         type = Token.WITH;
     }
 
-    public WithStatement() {
-    }
+    public WithStatement() {}
 
     public WithStatement(int pos) {
         super(pos);
@@ -36,9 +35,7 @@ public class WithStatement extends AstNode {
         super(pos, len);
     }
 
-    /**
-     * Returns object expression
-     */
+    /** Returns object expression */
     public AstNode getExpression() {
         return expression;
     }
@@ -54,9 +51,7 @@ public class WithStatement extends AstNode {
         expression.setParent(this);
     }
 
-    /**
-     * Returns the statement or block
-     */
+    /** Returns the statement or block */
     public AstNode getStatement() {
         return statement;
     }
@@ -72,37 +67,27 @@ public class WithStatement extends AstNode {
         statement.setParent(this);
     }
 
-    /**
-     * Returns left paren offset
-     */
+    /** Returns left paren offset */
     public int getLp() {
         return lp;
     }
 
-    /**
-     * Sets left paren offset
-     */
+    /** Sets left paren offset */
     public void setLp(int lp) {
         this.lp = lp;
     }
 
-    /**
-     * Returns right paren offset
-     */
+    /** Returns right paren offset */
     public int getRp() {
         return rp;
     }
 
-    /**
-     * Sets right paren offset
-     */
+    /** Sets right paren offset */
     public void setRp(int rp) {
         this.rp = rp;
     }
 
-    /**
-     * Sets both paren positions
-     */
+    /** Sets both paren positions */
     public void setParens(int lp, int rp) {
         this.lp = lp;
         this.rp = rp;
@@ -130,9 +115,7 @@ public class WithStatement extends AstNode {
         return sb.toString();
     }
 
-    /**
-     * Visits this node, then the with-object, then the body statement.
-     */
+    /** Visits this node, then the with-object, then the body statement. */
     @Override
     public void visit(NodeVisitor v) {
         if (v.visit(this)) {

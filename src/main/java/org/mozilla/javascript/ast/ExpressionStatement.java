@@ -9,9 +9,8 @@ package org.mozilla.javascript.ast;
 import org.mozilla.javascript.Token;
 
 /**
- * AST node representing an expression in a statement context.  The node type is
- * {@link Token#EXPR_VOID} if inside a function, or else
- * {@link Token#EXPR_RESULT} if inside a script.
+ * AST node representing an expression in a statement context. The node type is {@link
+ * Token#EXPR_VOID} if inside a function, or else {@link Token#EXPR_RESULT} if inside a script.
  */
 public class ExpressionStatement extends AstNode {
 
@@ -22,26 +21,22 @@ public class ExpressionStatement extends AstNode {
     }
 
     /**
-     * Called by the parser to set node type to EXPR_RESULT
-     * if this node is not within a Function.
+     * Called by the parser to set node type to EXPR_RESULT if this node is not within a Function.
      */
     public void setHasResult() {
         type = Token.EXPR_RESULT;
     }
 
-    public ExpressionStatement() {
-    }
+    public ExpressionStatement() {}
 
     /**
-     * Constructs a new {@code ExpressionStatement} wrapping
-     * the specified expression.  Sets this node's position to the
-     * position of the wrapped node, and sets the wrapped node's
-     * position to zero.  Sets this node's length to the length of
-     * the wrapped node.
+     * Constructs a new {@code ExpressionStatement} wrapping the specified expression. Sets this
+     * node's position to the position of the wrapped node, and sets the wrapped node's position to
+     * zero. Sets this node's length to the length of the wrapped node.
      *
-     * @param expr      the wrapped expression
-     * @param hasResult {@code true} if this expression has side
-     *                  effects.  If true, sets node type to EXPR_RESULT, else to EXPR_VOID.
+     * @param expr the wrapped expression
+     * @param hasResult {@code true} if this expression has side effects. If true, sets node type to
+     *     EXPR_RESULT, else to EXPR_VOID.
      */
     public ExpressionStatement(AstNode expr, boolean hasResult) {
         this(expr);
@@ -49,11 +44,9 @@ public class ExpressionStatement extends AstNode {
     }
 
     /**
-     * Constructs a new {@code ExpressionStatement} wrapping
-     * the specified expression.  Sets this node's position to the
-     * position of the wrapped node, and sets the wrapped node's
-     * position to zero.  Sets this node's length to the length of
-     * the wrapped node.
+     * Constructs a new {@code ExpressionStatement} wrapping the specified expression. Sets this
+     * node's position to the position of the wrapped node, and sets the wrapped node's position to
+     * zero. Sets this node's length to the length of the wrapped node.
      *
      * @param expr the wrapped expression
      */
@@ -68,9 +61,8 @@ public class ExpressionStatement extends AstNode {
     /**
      * Constructs a new {@code ExpressionStatement}
      *
-     * @param expr the wrapped {@link AstNode}.
-     *             The {@code ExpressionStatement}'s bounds are set to those of expr,
-     *             and expr's parent is set to this node.
+     * @param expr the wrapped {@link AstNode}. The {@code ExpressionStatement}'s bounds are set to
+     *     those of expr, and expr's parent is set to this node.
      * @throws IllegalArgumentException if {@code expr} is null
      */
     public ExpressionStatement(int pos, int len, AstNode expr) {
@@ -78,9 +70,7 @@ public class ExpressionStatement extends AstNode {
         setExpression(expr);
     }
 
-    /**
-     * Returns the wrapped expression
-     */
+    /** Returns the wrapped expression */
     public AstNode getExpression() {
         return expr;
     }
@@ -100,8 +90,7 @@ public class ExpressionStatement extends AstNode {
     /**
      * Returns true if this node has side effects
      *
-     * @throws IllegalStateException if expression has not yet
-     *                               been set.
+     * @throws IllegalStateException if expression has not yet been set.
      */
     @Override
     public boolean hasSideEffects() {
@@ -120,9 +109,7 @@ public class ExpressionStatement extends AstNode {
         return sb.toString();
     }
 
-    /**
-     * Visits this node, then the wrapped statement.
-     */
+    /** Visits this node, then the wrapped statement. */
     @Override
     public void visit(NodeVisitor v) {
         if (v.visit(this)) {

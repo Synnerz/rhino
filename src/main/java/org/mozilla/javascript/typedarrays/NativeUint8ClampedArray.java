@@ -6,22 +6,24 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.ScriptRuntimeES6;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
- * An array view that stores 8-bit quantities and implements the JavaScript "Uint8ClampedArray" interface.
- * It also implements List&lt;Integer&gt; for direct manipulation in Java. Bytes inserted that fall out of the range
- * (0 &lt;= X &lt; 256) will be adjusted so that they match before insertion.
+ * An array view that stores 8-bit quantities and implements the JavaScript "Uint8ClampedArray"
+ * interface. It also implements List&lt;Integer&gt; for direct manipulation in Java. Bytes inserted
+ * that fall out of the range (0 &lt;= X &lt; 256) will be adjusted so that they match before
+ * insertion.
  */
-
-public class NativeUint8ClampedArray
-        extends NativeTypedArrayView<Integer> {
+public class NativeUint8ClampedArray extends NativeTypedArrayView<Integer> {
     private static final long serialVersionUID = -3349419704390398895L;
 
     private static final String CLASS_NAME = "Uint8ClampedArray";
 
-    public NativeUint8ClampedArray() {
-    }
+    public NativeUint8ClampedArray() {}
 
     public NativeUint8ClampedArray(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len);
@@ -36,14 +38,20 @@ public class NativeUint8ClampedArray
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed) {
-        NativeUint8ClampedArray a = new NativeUint8ClampedArray();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    @Override
+    public void declare(String name, Scriptable start) {
+
     }
 
     @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor) {
-        addCtorSpecies(ctor);
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    public static void init(Context cx, Scriptable scope, boolean sealed) {
+        NativeUint8ClampedArray a = new NativeUint8ClampedArray();
+        IdFunctionObject constructor = a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        ScriptRuntimeES6.addSymbolSpecies(cx, scope, constructor);
     }
 
     @Override
@@ -58,11 +66,7 @@ public class NativeUint8ClampedArray
 
     @Override
     protected NativeUint8ClampedArray realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeUint8ClampedArray)) {
-            throw incompatibleCallError(f);
-        }
-        return (NativeUint8ClampedArray) unwrappedThis;
+        return ensureType(thisObj, NativeUint8ClampedArray.class, f);
     }
 
     @Override

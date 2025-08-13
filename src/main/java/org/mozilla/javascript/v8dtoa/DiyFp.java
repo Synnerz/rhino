@@ -43,7 +43,6 @@ class DiyFp {
     static final int kSignificandSize = 64;
     static final long kUint64MSB = 0x8000000000000000L;
 
-
     DiyFp() {
         this.f = 0;
         this.e = 0;
@@ -77,7 +76,6 @@ class DiyFp {
         result.subtract(b);
         return result;
     }
-
 
     // this = this * other.
     void multiply(DiyFp other) {
@@ -156,5 +154,4 @@ class DiyFp {
     public String toString() {
         return "[DiyFp f:" + f + ", e:" + e + "]";
     }
-
 }

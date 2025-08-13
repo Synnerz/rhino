@@ -10,9 +10,8 @@ import org.mozilla.javascript.Node;
 import org.mozilla.javascript.Token;
 
 /**
- * A block statement delimited by curly braces.  The node position is the
- * position of the open-curly, and the length extends to the position of
- * the close-curly.  Node type is {@link Token#BLOCK}.
+ * A block statement delimited by curly braces. The node position is the position of the open-curly,
+ * and the length extends to the position of the close-curly. Node type is {@link Token#BLOCK}.
  *
  * <pre><i>Block</i> :
  *     <b>{</b> Statement* <b>}</b></pre>
@@ -23,8 +22,7 @@ public class Block extends AstNode {
         this.type = Token.BLOCK;
     }
 
-    public Block() {
-    }
+    public Block() {}
 
     public Block(int pos) {
         super(pos);
@@ -34,9 +32,7 @@ public class Block extends AstNode {
         super(pos, len);
     }
 
-    /**
-     * Alias for {@link #addChild}.
-     */
+    /** Alias for {@link #addChild}. */
     public void addStatement(AstNode statement) {
         addChild(statement);
     }

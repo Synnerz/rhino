@@ -6,17 +6,17 @@
 
 package org.mozilla.javascript.json;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ScriptRuntime;
-import org.mozilla.javascript.Scriptable;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.ScriptRuntime;
+import org.mozilla.javascript.ScriptRuntime.StringIdOrIndex;
+import org.mozilla.javascript.Scriptable;
 
 /**
  * This class converts a stream of JSON tokens into a JSON value.
- * <p>
- * See ECMA 15.12.
+ *
+ * <p>See ECMA 15.12.
  *
  * @author Raphael Speyer
  * @author Hannes Wallnoefer
@@ -119,13 +119,12 @@ public class JsonParser {
                     consume(':');
                     value = readValue();
 
-                    long index = ScriptRuntime.indexFromString(id);
-                    if (index < 0) {
-                        object.put(id, object, value);
+                    StringIdOrIndex indexObj = ScriptRuntime.toStringIdOrIndex(id);
+                    if (indexObj.getStringId() == null) {
+                        object.put(indexObj.getIndex(), object, value);
                     } else {
-                        object.put((int) index, object, value);
+                        object.put(indexObj.getStringId(), object, value);
                     }
-
                     needsComma = true;
                     break;
                 default:
@@ -143,7 +142,7 @@ public class JsonParser {
             pos += 1;
             return cx.newArray(scope, 0);
         }
-        List<Object> list = new ArrayList<Object>();
+        List<Object> list = new ArrayList<>();
         boolean needsComma = false;
         while (pos < length) {
             char c = src.charAt(pos);
@@ -230,14 +229,17 @@ public class JsonParser {
                     break;
                 case 'u':
                     if (length - pos < 5) {
-                        throw new ParseException("Invalid character code: \\u" + src.substring(pos));
+                        throw new ParseException(
+                                "Invalid character code: \\u" + src.substring(pos));
                     }
-                    int code = fromHex(src.charAt(pos + 0)) << 12
-                            | fromHex(src.charAt(pos + 1)) << 8
-                            | fromHex(src.charAt(pos + 2)) << 4
-                            | fromHex(src.charAt(pos + 3));
+                    int code =
+                            fromHex(src.charAt(pos + 0)) << 12
+                                    | fromHex(src.charAt(pos + 1)) << 8
+                                    | fromHex(src.charAt(pos + 2)) << 4
+                                    | fromHex(src.charAt(pos + 3));
                     if (code < 0) {
-                        throw new ParseException("Invalid character code: " + src.substring(pos, pos + 4));
+                        throw new ParseException(
+                                "Invalid character code: " + src.substring(pos, pos + 4));
                     }
                     pos += 4;
                     b.append((char) code);
@@ -261,11 +263,10 @@ public class JsonParser {
         throw new ParseException("Unterminated string literal");
     }
 
-    private int fromHex(char c) {
-        return c >= '0' && c <= '9' ? c - '0'
-                : c >= 'A' && c <= 'F' ? c - 'A' + 10
-                : c >= 'a' && c <= 'f' ? c - 'a' + 10
-                : -1;
+    private static int fromHex(char c) {
+        return c >= '0' && c <= '9'
+                ? c - '0'
+                : c >= 'A' && c <= 'F' ? c - 'A' + 10 : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
     }
 
     private Number readNumber(char c) throws ParseException {
@@ -410,5 +411,4 @@ public class JsonParser {
             super(cause);
         }
     }
-
 }

@@ -5,7 +5,7 @@ import org.mozilla.javascript.*;
 public class WrapDecorator extends Decorator {
     public static void init(Scriptable scope) {
         WrapDecorator wrap = new WrapDecorator();
-        ScriptableObject.defineProperty(scope, "@wrap", wrap, ScriptableObject.NOT_ENUMERABLE);
+        ScriptableObject.defineProperty(scope, "@wrap", wrap, ScriptableObject.DONTENUM);
     }
 
     @Override

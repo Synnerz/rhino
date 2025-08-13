@@ -6,9 +6,7 @@
 
 package org.mozilla.javascript;
 
-/**
- * Additional interpreter-specific codes
- */
+/** Additional interpreter-specific codes */
 abstract class Icode {
 
     static final int
@@ -16,74 +14,73 @@ abstract class Icode {
             // delete operator used on a name
             Icode_DELNAME = 0,
 
-    // Stack: ... value1 -> ... value1 value1
-    Icode_DUP = -1,
+            // Stack: ... value1 -> ... value1 value1
+            Icode_DUP = -1,
 
-    // Stack: ... value2 value1 -> ... value2 value1 value2 value1
-    Icode_DUP2 = -2,
+            // Stack: ... value2 value1 -> ... value2 value1 value2 value1
+            Icode_DUP2 = -2,
 
-    // Stack: ... value2 value1 -> ... value1 value2
-    Icode_SWAP = -3,
+            // Stack: ... value2 value1 -> ... value1 value2
+            Icode_SWAP = -3,
 
-    // Stack: ... value1 -> ...
-    Icode_POP = -4,
+            // Stack: ... value1 -> ...
+            Icode_POP = -4,
 
-    // Store stack top into return register and then pop it
-    Icode_POP_RESULT = -5,
+            // Store stack top into return register and then pop it
+            Icode_POP_RESULT = -5,
 
-    // To jump conditionally and pop additional stack value
-    Icode_IFEQ_POP = -6,
+            // To jump conditionally and pop additional stack value
+            Icode_IFEQ_POP = -6,
 
-    // various types of ++/--
-    Icode_VAR_INC_DEC = -7,
+            // various types of ++/--
+            Icode_VAR_INC_DEC = -7,
             Icode_NAME_INC_DEC = -8,
             Icode_PROP_INC_DEC = -9,
             Icode_ELEM_INC_DEC = -10,
             Icode_REF_INC_DEC = -11,
 
-    // load/save scope from/to local
-    Icode_SCOPE_LOAD = -12,
+            // load/save scope from/to local
+            Icode_SCOPE_LOAD = -12,
             Icode_SCOPE_SAVE = -13,
+            Icode_TYPEOFNAME = -14,
 
-    Icode_TYPEOFNAME = -14,
-
-    // helper for function calls
-    Icode_NAME_AND_THIS = -15,
+            // helper for function calls
+            Icode_NAME_AND_THIS = -15,
             Icode_PROP_AND_THIS = -16,
             Icode_ELEM_AND_THIS = -17,
             Icode_VALUE_AND_THIS = -18,
 
-    // Create closure object for nested functions
-    Icode_CLOSURE_EXPR = -19,
+            // Create closure object for nested functions
+            Icode_CLOSURE_EXPR = -19,
             Icode_CLOSURE_STMT = -20,
 
-    // Special calls
-    Icode_CALLSPECIAL = -21,
+            // Special calls
+            Icode_CALLSPECIAL = -21,
 
-    // To return undefined value
-    Icode_RETUNDEF = -22,
+            // To return undefined value
+            Icode_RETUNDEF = -22,
 
-    // Exception handling implementation
-    Icode_GOSUB = -23,
+            // Exception handling implementation
+            Icode_GOSUB = -23,
             Icode_STARTSUB = -24,
             Icode_RETSUB = -25,
 
-    // To indicating a line number change in icodes.
-    Icode_LINE = -26,
+            // To indicating a line number change in icodes.
+            Icode_LINE = -26,
 
-    // To store shorts and ints inline
-    Icode_SHORTNUMBER = -27,
+            // To store shorts and ints inline
+            Icode_SHORTNUMBER = -27,
             Icode_INTNUMBER = -28,
 
-    // To create and populate array to hold values for [] and {} literals
-    Icode_LITERAL_NEW = -29,
+            // To create and populate array to hold values for [] and {} literals
+            Icode_LITERAL_NEW = -29,
             Icode_LITERAL_SET = -30,
 
-    // Array literal with skipped index like [1,,2]
-    Icode_SPARE_ARRAYLIT = -31,
+            // Array literal with skipped index like [1,,2]
+            Icode_SPARE_ARRAYLIT = -31,
 
-    // Load index register to prepare for the following index operation
-    Icode_REG_IND_C0 = -32,
+            // Load index register to prepare for the following index operation
+            Icode_REG_IND_C0 = -32,
             Icode_REG_IND_C1 = -33,
             Icode_REG_IND_C2 = -34,
             Icode_REG_IND_C3 = -35,
@@ -93,8 +90,8 @@ abstract class Icode {
             Icode_REG_IND2 = -39,
             Icode_REG_IND4 = -40,
 
-    // Load string register to prepare for the following string operation
-    Icode_REG_STR_C0 = -41,
+            // Load string register to prepare for the following string operation
+            Icode_REG_STR_C0 = -41,
             Icode_REG_STR_C1 = -42,
             Icode_REG_STR_C2 = -43,
             Icode_REG_STR_C3 = -44,
@@ -102,41 +99,71 @@ abstract class Icode {
             Icode_REG_STR2 = -46,
             Icode_REG_STR4 = -47,
 
-    // Version of getvar/setvar that read var index directly from bytecode
-    Icode_GETVAR1 = -48,
+            // Version of getvar/setvar that read var index directly from bytecode
+            Icode_GETVAR1 = -48,
             Icode_SETVAR1 = -49,
 
-    // Load undefined
-    Icode_UNDEF = -50,
+            // Load undefined
+            Icode_UNDEF = -50,
             Icode_ZERO = -51,
             Icode_ONE = -52,
 
-    // entrance and exit from .()
-    Icode_ENTERDQ = -53,
+            // entrance and exit from .()
+            Icode_ENTERDQ = -53,
             Icode_LEAVEDQ = -54,
+            Icode_TAIL_CALL = -55,
 
-    Icode_TAIL_CALL = -55,
+            // Clear local to allow GC its context
+            Icode_LOCAL_CLEAR = -56,
 
-    // Clear local to allow GC its context
-    Icode_LOCAL_CLEAR = -56,
-
-    // Literal get/set
-    Icode_LITERAL_GETTER = -57,
+            // Literal get/set
+            Icode_LITERAL_GETTER = -57,
             Icode_LITERAL_SETTER = -58,
 
-    // const
-    Icode_SETCONST = -59,
+            // const
+            Icode_SETCONST = -59,
             Icode_SETCONSTVAR = -60,
             Icode_SETCONSTVAR1 = -61,
 
-    // Generator opcodes (along with Token.YIELD)
-    Icode_GENERATOR = -62,
+            // Generator opcodes (along with Token.YIELD)
+            Icode_GENERATOR = -62,
             Icode_GENERATOR_END = -63,
+            Icode_DEBUGGER = -64,
+            Icode_GENERATOR_RETURN = -65,
+            Icode_YIELD_STAR = -66,
 
-    Icode_DEBUGGER = -64,
+            // Load BigInt register to prepare for the following BigInt operation
+            Icode_REG_BIGINT_C0 = -67,
+            Icode_REG_BIGINT_C1 = -68,
+            Icode_REG_BIGINT_C2 = -69,
+            Icode_REG_BIGINT_C3 = -70,
+            Icode_REG_BIGINT1 = -71,
+            Icode_REG_BIGINT2 = -72,
+            Icode_REG_BIGINT4 = -73,
 
-    // Last icode
-    MIN_ICODE = -64;
+            // Call to GetTemplateLiteralCallSite
+            Icode_TEMPLATE_LITERAL_CALLSITE = -74,
+
+            // Import/Export
+            Icode_GET_MODULE_EXPORTS = Icode_TEMPLATE_LITERAL_CALLSITE - 1,
+            Icode_EXPORT_NAME = Icode_GET_MODULE_EXPORTS - 1,
+            Icode_REEXPORT_NAME = Icode_EXPORT_NAME - 1,
+            Icode_REEXPORT_NAMESPACE = Icode_REEXPORT_NAME - 1,
+            Icode_IMPORT_NAME = Icode_REEXPORT_NAMESPACE - 1,
+            Icode_IMPORT_NAMESPACE = Icode_IMPORT_NAME - 1,
+
+            // Jump if stack head is null or undefined
+            Icode_IF_NULL_UNDEF = Icode_IMPORT_NAMESPACE - 1,
+            Icode_IF_NOT_NULL_UNDEF = Icode_IF_NULL_UNDEF - 1,
+
+            Icode_NAME_AND_THIS_OPTIONAL = Icode_IF_NOT_NULL_UNDEF - 1,
+            Icode_PROP_AND_THIS_OPTIONAL = Icode_NAME_AND_THIS_OPTIONAL - 1,
+            Icode_ELEM_AND_THIS_OPTIONAL = Icode_PROP_AND_THIS_OPTIONAL - 1,
+            Icode_VALUE_AND_THIS_OPTIONAL = Icode_ELEM_AND_THIS_OPTIONAL - 1,
+            Icode_CALLSPECIAL_OPTIONAL = Icode_VALUE_AND_THIS_OPTIONAL - 1,
+
+            // Last icode
+            MIN_ICODE = Icode_CALLSPECIAL_OPTIONAL;
 
     static String bytecodeName(int bytecode) {
         if (!validBytecode(bytecode)) {
@@ -152,6 +179,8 @@ abstract class Icode {
         }
 
         switch (bytecode) {
+            case Icode_DELNAME:
+                return "DELNAME";
             case Icode_DUP:
                 return "DUP";
             case Icode_DUP2:
@@ -188,12 +217,22 @@ abstract class Icode {
                 return "ELEM_AND_THIS";
             case Icode_VALUE_AND_THIS:
                 return "VALUE_AND_THIS";
+            case Icode_NAME_AND_THIS_OPTIONAL:
+                return "NAME_AND_THIS_OPTIONAL";
+            case Icode_PROP_AND_THIS_OPTIONAL:
+                return "PROP_AND_THIS_OPTIONAL";
+            case Icode_ELEM_AND_THIS_OPTIONAL:
+                return "ELEM_AND_THIS_OPTIONAL";
+            case Icode_VALUE_AND_THIS_OPTIONAL:
+                return "VALUE_AND_THIS_OPTIONAL";
             case Icode_CLOSURE_EXPR:
                 return "CLOSURE_EXPR";
             case Icode_CLOSURE_STMT:
                 return "CLOSURE_STMT";
             case Icode_CALLSPECIAL:
                 return "CALLSPECIAL";
+            case Icode_CALLSPECIAL_OPTIONAL:
+                return "CALLSPECIAL_OPTIONAL";
             case Icode_RETUNDEF:
                 return "RETUNDEF";
             case Icode_GOSUB:
@@ -280,6 +319,42 @@ abstract class Icode {
                 return "GENERATOR_END";
             case Icode_DEBUGGER:
                 return "DEBUGGER";
+            case Icode_GENERATOR_RETURN:
+                return "GENERATOR_RETURN";
+            case Icode_YIELD_STAR:
+                return "YIELD_STAR";
+            case Icode_REG_BIGINT_C0:
+                return "REG_BIGINT_C0";
+            case Icode_REG_BIGINT_C1:
+                return "REG_BIGINT_C1";
+            case Icode_REG_BIGINT_C2:
+                return "REG_BIGINT_C2";
+            case Icode_REG_BIGINT_C3:
+                return "REG_BIGINT_C3";
+            case Icode_REG_BIGINT1:
+                return "LOAD_BIGINT1";
+            case Icode_REG_BIGINT2:
+                return "LOAD_BIGINT2";
+            case Icode_REG_BIGINT4:
+                return "LOAD_BIGINT4";
+            case Icode_TEMPLATE_LITERAL_CALLSITE:
+                return "TEMPLATE_LITERAL_CALLSITE";
+            case Icode_GET_MODULE_EXPORTS:
+                return "GET_MODULE_EXPORTS";
+            case Icode_EXPORT_NAME:
+                return "EXPORT_NAME";
+            case Icode_REEXPORT_NAME:
+                return "REEXPORT_NAME";
+            case Icode_REEXPORT_NAMESPACE:
+                return "REEXPORT_NAMESPACE";
+            case Icode_IMPORT_NAME:
+                return "IMPORT_NAME";
+            case Icode_IMPORT_NAMESPACE:
+                return "IMPORT_NAMESPACE";
+            case Icode_IF_NULL_UNDEF:
+                return "IF_NULL_UNDEF";
+            case Icode_IF_NOT_NULL_UNDEF:
+                return "IF_NOT_NULL_UNDEF";
         }
 
         // icode without name
@@ -291,8 +366,7 @@ abstract class Icode {
     }
 
     static boolean validTokenCode(int token) {
-        return Token.FIRST_BYTECODE_TOKEN <= token
-                && token <= Token.LAST_BYTECODE_TOKEN;
+        return Token.FIRST_BYTECODE_TOKEN <= token && token <= Token.LAST_BYTECODE_TOKEN;
     }
 
     static boolean validBytecode(int bytecode) {

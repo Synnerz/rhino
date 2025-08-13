@@ -6,12 +6,20 @@
 
 package org.mozilla.javascript.jdk18;
 
-import org.mozilla.javascript.*;
-
-import java.lang.reflect.*;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.ContextFactory;
+import org.mozilla.javascript.InterfaceAdapter;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.VMBridge;
 
 public class VMBridge_jdk18 extends VMBridge {
-    private ThreadLocal<Object[]> contextLocal = new ThreadLocal<Object[]>();
+    private static final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
 
     @Override
     protected Object getThreadContextHelper() {
@@ -58,8 +66,7 @@ public class VMBridge_jdk18 extends VMBridge {
     }
 
     @Override
-    protected Object getInterfaceProxyHelper(ContextFactory cf,
-                                             Class<?>[] interfaces) {
+    protected Object getInterfaceProxyHelper(ContextFactory cf, Class<?>[] interfaces) {
         // XXX: How to handle interfaces array withclasses from different
         // class loaders? Using cf.getApplicationClassLoader() ?
         ClassLoader loader = interfaces[0].getClassLoader();
@@ -75,41 +82,41 @@ public class VMBridge_jdk18 extends VMBridge {
     }
 
     @Override
-    protected Object newInterfaceProxy(Object proxyHelper,
-                                       final ContextFactory cf,
-                                       final InterfaceAdapter adapter,
-                                       final Object target,
-                                       final Scriptable topScope) {
+    protected Object newInterfaceProxy(
+            Object proxyHelper,
+            final ContextFactory cf,
+            final InterfaceAdapter adapter,
+            final Object target,
+            final Scriptable topScope) {
         Constructor<?> c = (Constructor<?>) proxyHelper;
 
-        InvocationHandler handler = new InvocationHandler() {
-            @Override
-            public Object invoke(Object proxy,
-                                 Method method,
-                                 Object[] args) {
-                // In addition to methods declared in the interface, proxies
-                // also route some java.lang.Object methods through the
-                // invocation handler.
-                if (method.getDeclaringClass() == Object.class) {
-                    String methodName = method.getName();
-                    if (methodName.equals("equals")) {
-                        Object other = args[0];
-                        // Note: we could compare a proxy and its wrapped function
-                        // as equal here but that would break symmetry of equal().
-                        // The reason == suffices here is that proxies are cached
-                        // in ScriptableObject (see NativeJavaObject.coerceType())
-                        return Boolean.valueOf(proxy == other);
+        InvocationHandler handler =
+                new InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args) {
+                        // In addition to methods declared in the interface, proxies
+                        // also route some java.lang.Object methods through the
+                        // invocation handler.
+                        if (method.getDeclaringClass() == Object.class) {
+                            String methodName = method.getName();
+                            if (methodName.equals("equals")) {
+                                Object other = args[0];
+                                // Note: we could compare a proxy and its wrapped function
+                                // as equal here but that would break symmetry of equal().
+                                // The reason == suffices here is that proxies are cached
+                                // in ScriptableObject (see NativeJavaObject.coerceType())
+                                return Boolean.valueOf(proxy == other);
+                            }
+                            if (methodName.equals("hashCode")) {
+                                return Integer.valueOf(target.hashCode());
+                            }
+                            if (methodName.equals("toString")) {
+                                return "Proxy[" + target.toString() + "]";
+                            }
+                        }
+                        return adapter.invoke(cf, target, topScope, proxy, method, args);
                     }
-                    if (methodName.equals("hashCode")) {
-                        return Integer.valueOf(target.hashCode());
-                    }
-                    if (methodName.equals("toString")) {
-                        return "Proxy[" + target.toString() + "]";
-                    }
-                }
-                return adapter.invoke(cf, target, topScope, proxy, method, args);
-            }
-        };
+                };
         Object proxy;
         try {
             proxy = c.newInstance(handler);

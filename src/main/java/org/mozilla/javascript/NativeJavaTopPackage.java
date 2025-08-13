@@ -7,33 +7,30 @@
 package org.mozilla.javascript;
 
 /**
- * This class reflects Java packages into the JavaScript environment.  We
- * lazily reflect classes and subpackages, and use a caching/sharing
- * system to ensure that members reflected into one JavaPackage appear
- * in all other references to the same package (as with Packages.java.lang
- * and java.lang).
+ * This class reflects Java packages into the JavaScript environment. We lazily reflect classes and
+ * subpackages, and use a caching/sharing system to ensure that members reflected into one
+ * JavaPackage appear in all other references to the same package (as with Packages.java.lang and
+ * java.lang).
  *
  * @author Mike Shaver
  * @see NativeJavaArray
  * @see NativeJavaObject
  * @see NativeJavaClass
  */
-
-public class NativeJavaTopPackage
-        extends NativeJavaPackage implements Function, IdFunctionCall {
+public class NativeJavaTopPackage extends NativeJavaPackage implements Function, IdFunctionCall {
     private static final long serialVersionUID = -1455787259477709999L;
 
     // we know these are packages so we can skip the class check
     // note that this is ok even if the package isn't present.
     private static final String[][] commonPackages = {
-            {"java", "lang", "reflect"},
-            {"java", "io"},
-            {"java", "math"},
-            {"java", "net"},
-            {"java", "util", "zip"},
-            {"java", "text", "resources"},
-            {"java", "applet"},
-            {"javax", "swing"}
+        {"java", "lang", "reflect"},
+        {"java", "io"},
+        {"java", "math"},
+        {"java", "net"},
+        {"java", "util", "zip"},
+        {"java", "text", "resources"},
+        {"java", "applet"},
+        {"javax", "swing"}
     };
 
     NativeJavaTopPackage(ClassLoader loader) {
@@ -41,8 +38,7 @@ public class NativeJavaTopPackage
     }
 
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
-                       Object[] args) {
+    public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         return construct(cx, scope, args);
     }
 
@@ -59,7 +55,7 @@ public class NativeJavaTopPackage
             }
         }
         if (loader == null) {
-            Context.reportRuntimeError0("msg.not.classloader");
+            Context.reportRuntimeErrorById("msg.not.classloader");
             return null;
         }
         NativeJavaPackage pkg = new NativeJavaPackage(true, "", loader);
@@ -81,8 +77,8 @@ public class NativeJavaTopPackage
         }
 
         // getClass implementation
-        IdFunctionObject getClass = new IdFunctionObject(top, FTAG, Id_getClass,
-                "getClass", 1, scope);
+        IdFunctionObject getClass =
+                new IdFunctionObject(top, FTAG, Id_getClass, "getClass", 1, scope);
 
         // We want to get a real alias, and not a distinct JavaPackage
         // with the same packageName, so that we share classes and top
@@ -101,16 +97,15 @@ public class NativeJavaTopPackage
             getClass.sealObject();
         }
         getClass.exportAsScopeProperty();
-        global.defineProperty("Packages", top, ScriptableObject.NOT_ENUMERABLE);
+        global.defineProperty("Packages", top, ScriptableObject.DONTENUM);
         for (int i = 0; i < topNames.length; i++) {
-            global.defineProperty(topNames[i], topPackages[i],
-                    ScriptableObject.NOT_ENUMERABLE);
+            global.defineProperty(topNames[i], topPackages[i], ScriptableObject.DONTENUM);
         }
     }
 
     @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args) {
+    public Object execIdCall(
+            IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (f.hasTag(FTAG)) {
             if (f.methodId() == Id_getClass) {
                 return js_getClass(cx, scope, args);
@@ -129,22 +124,18 @@ public class NativeJavaTopPackage
             int offset = 0;
             for (; ; ) {
                 int index = name.indexOf('.', offset);
-                String propName = index == -1
-                        ? name.substring(offset)
-                        : name.substring(offset, index);
+                String propName =
+                        index == -1 ? name.substring(offset) : name.substring(offset, index);
                 Object prop = result.get(propName, result);
-                if (!(prop instanceof Scriptable))
-                    break;  // fall through to error
+                if (!(prop instanceof Scriptable)) break; // fall through to error
                 result = (Scriptable) prop;
-                if (index == -1)
-                    return result;
+                if (index == -1) return result;
                 offset = index + 1;
             }
         }
-        throw Context.reportRuntimeError0("msg.not.java.obj");
+        throw Context.reportRuntimeErrorById("msg.not.java.obj");
     }
 
     private static final Object FTAG = "JavaTopPackage";
     private static final int Id_getClass = 1;
 }
-

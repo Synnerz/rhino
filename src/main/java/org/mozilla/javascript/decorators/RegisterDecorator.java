@@ -5,7 +5,7 @@ import org.mozilla.javascript.*;
 public class RegisterDecorator extends Decorator {
     public static void init(Scriptable scope) {
         RegisterDecorator register = new RegisterDecorator();
-        ScriptableObject.defineProperty(scope, "@register", register, ScriptableObject.NOT_ENUMERABLE);
+        ScriptableObject.defineProperty(scope, "@register", register, ScriptableObject.DONTENUM);
     }
 
     @Override
@@ -16,7 +16,7 @@ public class RegisterDecorator extends Decorator {
         Object realTarget = target;
 
         if ((descriptor & STATIC) == 0 && (descriptor & CLASS) == 0) {
-            realTarget = ScriptableObject.getProperty(target, "prototype");
+//            realTarget = ScriptableObject.getProperty(target, "prototype");
         }
 
         if ((descriptor & CLASS) != 0 || (descriptor & PRIVATE) != 0) {

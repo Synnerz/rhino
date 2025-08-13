@@ -6,22 +6,21 @@
 
 package org.mozilla.javascript;
 
-import org.mozilla.javascript.optimizer.Codegen;
-
 /**
  * This class implements the JavaScript scanner.
- * <p>
- * It is based on the C source files jsscan.c and jsscan.h
- * in the jsref package.
  *
+ * <p>It is based on the C source files jsscan.c and jsscan.h in the jsref package.
+ *
+ * @see org.mozilla.javascript.Parser
  * @author Mike McCabe
  * @author Brendan Eich
- * @see org.mozilla.javascript.Parser
  */
-
 public class Token {
-    public enum CommentType {
-        LINE, BLOCK_COMMENT, JSDOC, HTML
+    public static enum CommentType {
+        LINE,
+        BLOCK_COMMENT,
+        JSDOC,
+        HTML
     }
 
     // debug flags
@@ -29,20 +28,15 @@ public class Token {
     static final boolean printICode = false;
     static final boolean printNames = printTrees || printICode;
 
-    /**
-     * Token types.  These values correspond to JSTokenType values in
-     * jsscan.c.
-     */
-
-    public final static int
+    /** Token types. These values correspond to JSTokenType values in jsscan.c. */
+    public static final int
             // start enum
             ERROR = -1, // well-known as the only code < EOF
-            EOF = 0,  // end of file token - (not EOF_CHAR)
-            EOL = 1,  // end of line
+            EOF = 0, // end of file token - (not EOF_CHAR)
+            EOL = 1, // end of line
 
             // Interpreter reuses the following as bytecodes
             FIRST_BYTECODE_TOKEN = 2,
-
             ENTERWITH = 2,
             LEAVEWITH = 3,
             RETURN = 4,
@@ -67,186 +61,199 @@ public class Token {
             MUL = 23,
             DIV = 24,
             MOD = 25,
-            EXP = 26,
-            NOT = 27,
-            BITNOT = 28,
-            POS = 29,
-            NEG = 30,
-            NEW = 31,
-            DELPROP = 32,
-            TYPEOF = 33,
-            GETPROP = 34,
-            GETPROPNOWARN = 35,
-            SETPROP = 36,
-            GETELEM = 37,
-            SETELEM = 38,
-            CALL = 39,
-            NAME = 40,
-            NUMBER = 41,
-            STRING = 42,
-            TEMPLATE = 43,
-            TEMPLATE_EXPR = 44,
-            NULL = 45,
-            THIS = 46,
-            FALSE = 47,
-            TRUE = 48,
-            SHEQ = 49,   // shallow equality (===)
-            SHNE = 50,   // shallow inequality (!==)
-            REGEXP = 51,
-            BINDNAME = 52,
-            THROW = 53,
-            RETHROW = 54, // rethrow caught exception: catch (e if ) use it
-            IN = 55,
-            INSTANCEOF = 56,
-            LOCAL_LOAD = 57,
-            GETVAR = 58,
-            SETVAR = 59,
-            CATCH_SCOPE = 60,
-            ENUM_INIT_KEYS = 61,
-            ENUM_INIT_VALUES = 62,
-            ENUM_INIT_ARRAY = 63,
-            ENUM_INIT_VALUES_IN_ORDER = 64,
-            ENUM_NEXT = 65,
-            ENUM_ID = 66,
-            THISFN = 67,
-            RETURN_RESULT = 68, // to return previously stored return result
-            ARRAYLIT = 69, // array literal
-            OBJECTLIT = 70, // object literal
-            GET_REF = 71, // *reference
-            SET_REF = 72, // *reference    = something
-            DEL_REF = 73, // delete reference
-            REF_CALL = 74, // f(args)    = something or f(args)++
-            REF_SPECIAL = 75, // reference for special properties like __proto
-            YIELD = 76,  // JS 1.7 yield pseudo keyword
-            STRICT_SETNAME = 77,
+            NOT = 26,
+            BITNOT = 27,
+            POS = 28,
+            NEG = 29,
+            NEW = 30,
+            DELPROP = 31,
+            TYPEOF = 32,
+            GETPROP = 33,
+            GETPROPNOWARN = 34,
+            SETPROP = 35,
+            GETELEM = 36,
+            SETELEM = 37,
+            CALL = 38,
+            NAME = 39,
+            NUMBER = 40,
+            STRING = 41,
+            NULL = 42,
+            THIS = 43,
+            FALSE = 44,
+            TRUE = 45,
+            SHEQ = 46, // shallow equality (===)
+            SHNE = 47, // shallow inequality (!==)
+            REGEXP = 48,
+            BINDNAME = 49,
+            THROW = 50,
+            RETHROW = 51, // rethrow caught exception: catch (e if ) use it
+            IN = 52,
+            INSTANCEOF = 53,
+            LOCAL_LOAD = 54,
+            GETVAR = 55,
+            SETVAR = 56,
+            CATCH_SCOPE = 57,
+            ENUM_INIT_KEYS = 58,
+            ENUM_INIT_VALUES = 59,
+            ENUM_INIT_ARRAY = 60,
+            ENUM_INIT_VALUES_IN_ORDER = 61,
+            ENUM_NEXT = 62,
+            ENUM_ID = 63,
+            THISFN = 64,
+            RETURN_RESULT = 65, // to return previously stored return result
+            ARRAYLIT = 66, // array literal
+            OBJECTLIT = 67, // object literal
+            GET_REF = 68, // *reference
+            SET_REF = 69, // *reference    = something
+            DEL_REF = 70, // delete reference
+            REF_CALL = 71, // f(args)    = something or f(args)++
+            REF_SPECIAL = 72, // reference for special properties like __proto
+            YIELD = 73, // JS 1.7 yield pseudo keyword
+            STRICT_SETNAME = 74,
+            EXP = 75, // Exponentiation Operator
 
-            // End of interpreter bytecodes
-            LAST_BYTECODE_TOKEN = STRICT_SETNAME,
+            // For XML support:
+            DEFAULTNAMESPACE = 76, // default xml namespace =
+            ESCXMLATTR = 77,
+            ESCXMLTEXT = 78,
+            REF_MEMBER = 79, // Reference for x.@y, x..y etc.
+            REF_NS_MEMBER = 80, // Reference for x.ns::y, x..ns::y etc.
+            REF_NAME = 81, // Reference for @y, @[y] etc.
+            REF_NS_NAME = 82, // Reference for ns::y, @ns::y@[y] etc.
+            BIGINT = 83; // ES2020 BigInt
 
-            TRY = 78,
-            SEMI = 79,  // semicolon
-            LB = 80,  // left and right brackets
-            RB = 81,
-            LC = 82,  // left and right curlies (braces)
-            RC = 83,
-            LP = 84,  // left and right parentheses
-            RP = 85,
-            COMMA = 86,  // comma operator
-
-            ASSIGN = 87,  // simple assignment  (=)
-            ASSIGN_BITOR = 88,  // |=
-            ASSIGN_BITXOR = 89,  // ^=
-            ASSIGN_BITAND = 90,  // |=
-            ASSIGN_LSH = 91,  // <<=
-            ASSIGN_RSH = 92,  // >>=
-            ASSIGN_URSH = 93, // >>>=
-            ASSIGN_ADD = 94,  // +=
-            ASSIGN_SUB = 95,  // -=
-            ASSIGN_MUL = 96,  // *=
-            ASSIGN_DIV = 97,  // /=
-            ASSIGN_MOD = 98,  // %=
-            ASSIGN_EXP = 99,  // **=
-            ASSIGN_OR = 100,  // ||=
-            ASSIGN_AND = 101,  // &&=
-            ASSIGN_NULLISH = 102,  // ??=
-
-            FIRST_ASSIGN = ASSIGN,
-            LAST_ASSIGN = ASSIGN_NULLISH,
-
-            HOOK = 103, // conditional (?:)
-            COLON = 104,
-            OR = 105, // logical or (||)
-            AND = 106, // logical and (&&)
-            INC = 107, // increment/decrement (++ --)
-            DEC = 108,
-            DOT = 109, // member operator (.)
-            SPREAD = 110,
-            OPTIONAL_CHAINING = 111, // optional chaining member operator (?.) https://tc39.es/proposal-optional-chaining/
-            PIPELINE = 112, // pipeline operator (|>) https://tc39.es/proposal-pipeline-operator
-            NULLISH_COALESCING = 113, // pipeline operator (??) https://tc39.es/proposal-nullish-coalescing/
-            FUNCTION = 114, // function keyword
-            CLASS = 115,
-            EXTENDS = 116,
-            STATIC = 117,
-            SUPER = 118,
-            EXPORT = 119, // export keyword
-            IMPORT = 120, // import keyword
-            IF = 121, // if keyword
-            ELSE = 122, // else keyword
-            SWITCH = 123, // switch keyword
-            CASE = 124, // case keyword
-            DEFAULT = 125, // default keyword
-            WHILE = 126, // while keyword
-            DO = 127, // do keyword
-            FOR = 128, // for keyword
-            BREAK = 129, // break keyword
-            CONTINUE = 130, // continue keyword
-            VAR = 131, // var keyword
-            WITH = 132, // with keyword
-            CATCH = 133, // catch keyword
-            FINALLY = 134, // finally keyword
-            DECORATOR = 135,
-            VOID = 136, // void keyword
-            RESERVED = 137, // reserved keywords
-
-            EMPTY = 138,
+    // End of interpreter bytecodes
+    public static final int LAST_BYTECODE_TOKEN = BIGINT,
+            TRY = 84,
+            SEMI = 85, // semicolon
+            LB = 86, // left and right brackets
+            RB = 87,
+            LC = 88, // left and right curlies (braces)
+            RC = 89,
+            LP = 90, // left and right parentheses
+            RP = 91,
+            COMMA = 92, // comma operator
+            ASSIGN = 93, // simple assignment  (=)
+            ASSIGN_BITOR = 94, // |=
+            ASSIGN_BITXOR = 95, // ^=
+            ASSIGN_BITAND = 96, // |=
+            ASSIGN_LSH = 97, // <<=
+            ASSIGN_RSH = 98, // >>=
+            ASSIGN_URSH = 99, // >>>=
+            ASSIGN_ADD = 100, // +=
+            ASSIGN_SUB = 101, // -=
+            ASSIGN_MUL = 102, // *=
+            ASSIGN_DIV = 103, // /=
+            ASSIGN_MOD = 104, // %=
+            ASSIGN_EXP = 105; // **=
+    public static final int FIRST_ASSIGN = ASSIGN,
+            LAST_ASSIGN = ASSIGN_EXP,
+            HOOK = 106, // conditional (?:)
+            COLON = 107,
+            OR = 108, // logical or (||)
+            AND = 109, // logical and (&&)
+            INC = 110, // increment/decrement (++ --)
+            DEC = 111,
+            DOT = 112, // member operator (.)
+            FUNCTION = 113, // function keyword
+            CLASS = FUNCTION + 1,
+            EXTENDS = CLASS + 1,
+            STATIC = EXTENDS + 1,
+            SUPER = STATIC + 1,
+            EXPORT = SUPER + 1, // export keyword
+            IMPORT = EXPORT + 1, // import keyword
+            IF = IMPORT + 1, // if keyword
+            ELSE = IF + 1, // else keyword
+            SWITCH = ELSE + 1, // switch keyword
+            CASE = SWITCH + 1, // case keyword
+            DEFAULT = CASE + 1, // default keyword
+            WHILE = DEFAULT + 1, // while keyword
+            DO = WHILE + 1, // do keyword
+            FOR = DO + 1, // for keyword
+            BREAK = FOR + 1, // break keyword
+            CONTINUE = BREAK + 1, // continue keyword
+            VAR = CONTINUE + 1, // var keyword
+            WITH = VAR + 1, // with keyword
+            CATCH = WITH + 1, // catch keyword
+            FINALLY = CATCH + 1, // finally keyword
+            VOID = FINALLY + 1, // void keyword
+            RESERVED = VOID + 1, // reserved keywords
+            EMPTY = RESERVED + 1,
 
             /* types used for the parse tree - these never get returned
              * by the scanner.
              */
-            BLOCK = 139, // statement block
-            LABEL = 140, // label
-            TARGET = 141,
-            LOOP = 142,
-            EXPR_VOID = 143, // expression statement in functions
-            EXPR_RESULT = 144, // expression statement in scripts
-            JSR = 145,
-            SCRIPT = 146, // top-level node for entire script
-            TYPEOFNAME = 147, // for typeof(simple-name)
-            USE_STACK = 148,
-            SETPROP_OP = 149, // x.y op= something
-            SETELEM_OP = 150, // x[y] op= something
-            LOCAL_BLOCK = 151,
-            SET_REF_OP = 152, // *reference op= something
 
-            AT = 153,  // @
+            BLOCK = EMPTY + 1, // statement block
+            LABEL = BLOCK + 1, // label
+            TARGET = LABEL + 1,
+            LOOP = TARGET + 1,
+            EXPR_VOID = LOOP + 1, // expression statement in functions
+            EXPR_RESULT = EXPR_VOID + 1, // expression statement in scripts
+            JSR = EXPR_RESULT + 1,
+            SCRIPT = JSR + 1, // top-level node for entire script
+            TYPEOFNAME = SCRIPT + 1, // for typeof(simple-name)
+            USE_STACK = TYPEOFNAME + 1,
+            SETPROP_OP = USE_STACK + 1, // x.y op= something
+            SETELEM_OP = SETPROP_OP + 1, // x[y] op= something
+            LOCAL_BLOCK = SETELEM_OP + 1,
+            SET_REF_OP = LOCAL_BLOCK + 1, // *reference op= something
+
+            // For XML support:
+            DOTDOT = SET_REF_OP + 1, // member operator (..)
+            COLONCOLON = DOTDOT + 1, // namespace::name
+            XML = COLONCOLON + 1, // XML type
+            DOTQUERY = XML + 1, // .() -- e.g., x.emps.emp.(name == "terry")
+            XMLATTR = DOTQUERY + 1, // @
+            XMLEND = XMLATTR + 1,
 
             // Optimizer-only-tokens
-            TO_OBJECT = 154,
-            TO_DOUBLE = 155,
-
-            GET = 156,  // JS 1.5 get pseudo keyword
-            SET = 157,  // JS 1.5 set pseudo keyword
-            LET = 158,  // JS 1.7 let pseudo keyword
-            CONST = 159,
-            SETCONST = 160,
-            SETCONSTVAR = 161,
-            ARRAYCOMP = 162,  // array comprehension
-            LETEXPR = 163,
-            WITHEXPR = 164,
-            DEBUGGER = 165,
-            COMMENT = 166,
-            GENEXPR = 167,
-            METHOD = 168, // ES6 MethodDefinition
-            ARROW = 169,  // ES6 ArrowFunction
-            HASHTAG = 170,  // ES6 ArrowFunction
-            LAST_TOKEN = 170;
+            TO_OBJECT = XMLEND + 1,
+            TO_DOUBLE = TO_OBJECT + 1,
+            GET = TO_DOUBLE + 1, // JS 1.5 get pseudo keyword
+            SET = GET + 1, // JS 1.5 set pseudo keyword
+            LET = SET + 1, // JS 1.7 let pseudo keyword
+            CONST = LET + 1,
+            SETCONST = CONST + 1,
+            SETCONSTVAR = SETCONST + 1,
+            ARRAYCOMP = SETCONSTVAR + 1, // array comprehension
+            LETEXPR = ARRAYCOMP + 1,
+            WITHEXPR = LETEXPR + 1,
+            DEBUGGER = WITHEXPR + 1,
+            COMMENT = DEBUGGER + 1,
+            GENEXPR = COMMENT + 1,
+            METHOD = GENEXPR + 1, // ES6 MethodDefinition
+            ARROW = METHOD + 1, // ES6 ArrowFunction
+            YIELD_STAR = ARROW + 1, // ES6 "yield *", a specialization of yield
+            TEMPLATE_LITERAL = YIELD_STAR + 1, // template literal
+            TEMPLATE_CHARS = TEMPLATE_LITERAL + 1, // template literal - literal section
+            TEMPLATE_LITERAL_SUBST = TEMPLATE_CHARS + 1, // template literal - substitution
+            TAGGED_TEMPLATE_LITERAL = TEMPLATE_LITERAL_SUBST + 1, // template literal - tagged/handler
+            DOTDOTDOT = TAGGED_TEMPLATE_LITERAL + 1, // spread/rest ...
+            NAMED_IMPORT = DOTDOTDOT + 1,
+            NAMED_EXPORT = NAMED_IMPORT + 1,
+            NAMESPACE_IMPORT_EXPORT = NAMED_EXPORT + 1,
+            EXPORT_VALUE = NAMESPACE_IMPORT_EXPORT + 1,
+            NULLISH_COALESCING = EXPORT_VALUE + 1,
+            QUESTION_DOT = NULLISH_COALESCING + 1,
+            SPREAD = QUESTION_DOT + 1,
+            LAST_TOKEN = SPREAD;
 
     /**
-     * Returns a name for the token.  If Rhino is compiled with certain
-     * hardcoded debugging flags in this file, it calls {@code #typeToName};
-     * otherwise it returns a string whose value is the token number.
+     * Returns a name for the token. If Rhino is compiled with certain hardcoded debugging flags in
+     * this file, it calls {@code #typeToName}; otherwise it returns a string whose value is the
+     * token number.
      */
     public static String name(int token) {
-        if (!printNames && !Context.getContext().hasFeature(Context.EMIT_DEBUG_OUTPUT)) {
+        if (!printNames) {
             return String.valueOf(token);
         }
         return typeToName(token);
     }
 
     /**
-     * Always returns a human-readable string for the token name.
-     * For instance, {@link #FINALLY} has the name "FINALLY".
+     * Always returns a human-readable string for the token name. For instance, {@link #FINALLY} has
+     * the name "FINALLY".
      *
      * @param token the token code
      * @return the actual name for the token code
@@ -273,6 +280,8 @@ public class Token {
                 return "IFNE";
             case SETNAME:
                 return "SETNAME";
+            case STRICT_SETNAME:
+                return "STRICT_SETNAME";
             case BITOR:
                 return "BITOR";
             case BITXOR:
@@ -307,8 +316,6 @@ public class Token {
                 return "DIV";
             case MOD:
                 return "MOD";
-            case EXP:
-                return "EXP";
             case NOT:
                 return "NOT";
             case BITNOT:
@@ -341,10 +348,6 @@ public class Token {
                 return "NUMBER";
             case STRING:
                 return "STRING";
-            case TEMPLATE:
-                return "TEMPLATE";
-            case TEMPLATE_EXPR:
-                return "TEMPLATE_EXPR";
             case NULL:
                 return "NULL";
             case THIS:
@@ -407,10 +410,20 @@ public class Token {
                 return "REF_CALL";
             case REF_SPECIAL:
                 return "REF_SPECIAL";
-            case YIELD:
-                return "YIELD";
-            case STRICT_SETNAME:
-                return "STRICT_SETNAME";
+            case DEFAULTNAMESPACE:
+                return "DEFAULTNAMESPACE";
+            case ESCXMLTEXT:
+                return "ESCXMLTEXT";
+            case ESCXMLATTR:
+                return "ESCXMLATTR";
+            case REF_MEMBER:
+                return "REF_MEMBER";
+            case REF_NS_MEMBER:
+                return "REF_NS_MEMBER";
+            case REF_NAME:
+                return "REF_NAME";
+            case REF_NS_NAME:
+                return "REF_NS_NAME";
             case TRY:
                 return "TRY";
             case SEMI:
@@ -449,24 +462,20 @@ public class Token {
                 return "ASSIGN_SUB";
             case ASSIGN_MUL:
                 return "ASSIGN_MUL";
-            case ASSIGN_EXP:
-                return "ASSIGN_EXP";
             case ASSIGN_DIV:
                 return "ASSIGN_DIV";
             case ASSIGN_MOD:
                 return "ASSIGN_MOD";
-            case ASSIGN_AND:
-                return "ASSIGN_AND";
-            case ASSIGN_OR:
-                return "ASSIGN_OR";
-            case ASSIGN_NULLISH:
-                return "ASSIGN_NULLISH";
+            case ASSIGN_EXP:
+                return "ASSIGN_EXP";
             case HOOK:
                 return "HOOK";
             case COLON:
                 return "COLON";
             case OR:
                 return "OR";
+            case NULLISH_COALESCING:
+                return "NULLISH_COALESCING";
             case AND:
                 return "AND";
             case INC:
@@ -475,24 +484,8 @@ public class Token {
                 return "DEC";
             case DOT:
                 return "DOT";
-            case SPREAD:
-                return "SPREAD";
-            case OPTIONAL_CHAINING:
-                return "OPTIONAL CHAINING";
-            case PIPELINE:
-                return "PIPELINE";
-            case NULLISH_COALESCING:
-                return "NULLISH_COALESCING";
             case FUNCTION:
                 return "FUNCTION";
-            case CLASS:
-                return "CLASS";
-            case EXTENDS:
-                return "EXTENDS";
-            case STATIC:
-                return "STATIC";
-            case SUPER:
-                return "SUPER";
             case EXPORT:
                 return "EXPORT";
             case IMPORT:
@@ -525,8 +518,6 @@ public class Token {
                 return "CATCH";
             case FINALLY:
                 return "FINALLY";
-            case DECORATOR:
-                return "DECORATOR";
             case VOID:
                 return "VOID";
             case RESERVED:
@@ -561,8 +552,26 @@ public class Token {
                 return "LOCAL_BLOCK";
             case SET_REF_OP:
                 return "SET_REF_OP";
-            case AT:
-                return "AT";
+            case DOTDOT:
+                return "DOTDOT";
+            case NAMED_IMPORT:
+                return "NAMED_IMPORT";
+            case NAMED_EXPORT:
+                return "NAMED_EXPORT";
+            case NAMESPACE_IMPORT_EXPORT:
+                return "NAMESPACE_IMPORT_EXPORT";
+            case EXPORT_VALUE:
+                return "EXPORT_VALUE";
+            case COLONCOLON:
+                return "COLONCOLON";
+            case XML:
+                return "XML";
+            case DOTQUERY:
+                return "DOTQUERY";
+            case XMLATTR:
+                return "XMLATTR";
+            case XMLEND:
+                return "XMLEND";
             case TO_OBJECT:
                 return "TO_OBJECT";
             case TO_DOUBLE:
@@ -573,18 +582,20 @@ public class Token {
                 return "SET";
             case LET:
                 return "LET";
+            case YIELD:
+                return "YIELD";
+            case EXP:
+                return "EXP";
             case CONST:
                 return "CONST";
             case SETCONST:
                 return "SETCONST";
-            case SETCONSTVAR:
-                return "SETCONSTVAR";
             case ARRAYCOMP:
                 return "ARRAYCOMP";
-            case LETEXPR:
-                return "LETEXPR";
             case WITHEXPR:
                 return "WITHEXPR";
+            case LETEXPR:
+                return "LETEXPR";
             case DEBUGGER:
                 return "DEBUGGER";
             case COMMENT:
@@ -595,8 +606,30 @@ public class Token {
                 return "METHOD";
             case ARROW:
                 return "ARROW";
-            case HASHTAG:
-                return "HASHTAG";
+            case YIELD_STAR:
+                return "YIELD_STAR";
+            case BIGINT:
+                return "BIGINT";
+            case TEMPLATE_LITERAL:
+                return "TEMPLATE_LITERAL";
+            case TEMPLATE_CHARS:
+                return "TEMPLATE_CHARS";
+            case TEMPLATE_LITERAL_SUBST:
+                return "TEMPLATE_LITERAL_SUBST";
+            case TAGGED_TEMPLATE_LITERAL:
+                return "TAGGED_TEMPLATE_LITERAL";
+            case QUESTION_DOT:
+                return "QUESTION_DOT";
+            case CLASS:
+                return "CLASS";
+            case STATIC:
+                return "STATIC";
+            case EXTENDS:
+                return "EXTENDS";
+//            case SUPER:
+//                return "SUPER";
+            case SPREAD:
+                return "SPREAD";
         }
 
         // Token without name
@@ -604,8 +637,8 @@ public class Token {
     }
 
     /**
-     * Convert a keyword token to a name string for use with the
-     * {@link Context#FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER} feature.
+     * Convert a keyword token to a name string for use with the {@link
+     * Context#FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER} feature.
      *
      * @param token A token
      * @return the corresponding name string
@@ -684,8 +717,6 @@ public class Token {
                 return "super";
             case Token.EXTENDS:
                 return "extends";
-            case Token.DECORATOR:
-                return "decorator";
             default:
                 return null;
         }
@@ -698,7 +729,6 @@ public class Token {
      * @return true if it's a known token
      */
     public static boolean isValidToken(int code) {
-        return code >= ERROR
-                && code <= LAST_TOKEN;
+        return code >= ERROR && code <= LAST_TOKEN;
     }
 }

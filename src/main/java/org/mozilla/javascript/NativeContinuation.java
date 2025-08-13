@@ -8,8 +8,7 @@ package org.mozilla.javascript;
 
 import java.util.Objects;
 
-public final class NativeContinuation extends IdScriptableObject
-        implements Function {
+public final class NativeContinuation extends IdScriptableObject implements Function {
     private static final long serialVersionUID = 1794167133757605367L;
 
     private static final Object FTAG = "Continuation";
@@ -35,18 +34,30 @@ public final class NativeContinuation extends IdScriptableObject
     }
 
     @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
     public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
         throw Context.reportRuntimeError("Direct call is not supported");
     }
 
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
-                       Object[] args) {
+    public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         return Interpreter.restartContinuation(this, cx, scope, args);
     }
 
     public static boolean isContinuationConstructor(IdFunctionObject f) {
-        return f.hasTag(FTAG) && f.methodId() == Id_constructor;
+        if (f.hasTag(FTAG) && f.methodId() == Id_constructor) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -77,8 +88,8 @@ public final class NativeContinuation extends IdScriptableObject
     }
 
     @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args) {
+    public Object execIdCall(
+            IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (!f.hasTag(FTAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
         }
@@ -90,30 +101,19 @@ public final class NativeContinuation extends IdScriptableObject
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-// #string_id_map#
-
     @Override
     protected int findPrototypeId(String s) {
         int id;
-// #generated# Last update: 2007-05-09 08:16:40 EDT
-        L0:
-        {
-            id = 0;
-            String X = null;
-            if (s.length() == 11) {
-                X = "constructor";
+        switch (s) {
+            case "constructor":
                 id = Id_constructor;
-            }
-            if (X != null && X != s && !X.equals(s)) id = 0;
-            break L0;
+                break;
+            default:
+                id = 0;
+                break;
         }
-// #/generated#
         return id;
     }
 
-    private static final int
-            Id_constructor = 1,
-            MAX_PROTOTYPE_ID = 1;
-
-// #/string_id_map#
+    private static final int Id_constructor = 1, MAX_PROTOTYPE_ID = 1;
 }

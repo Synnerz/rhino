@@ -7,580 +7,356 @@
 package org.mozilla.javascript;
 
 /**
- * This class implements the Math native object.
- * See ECMA 15.8.
+ * This class implements the Math native object. See ECMA 15.8.
  *
  * @author Norris Boyd
  */
-
-final class NativeMath extends IdScriptableObject {
+final class NativeMath extends ScriptableObject {
     private static final long serialVersionUID = -8838847185801131569L;
 
-    private static final Object MATH_TAG = "Math";
+    private static final String MATH_TAG = "Math";
     private static final double LOG2E = 1.4426950408889634;
-    private static final double DEG_PER_RAD = 0.017453292519943295;
-    private static final double RAD_PER_DEG = 57.29577951308232;
+    private static final Double Double32 = Double.valueOf(32d);
 
     static void init(Scriptable scope, boolean sealed) {
-        NativeMath obj = new NativeMath();
-        obj.activatePrototypeMap(MAX_ID);
-        obj.setPrototype(getObjectPrototype(scope));
-        obj.setParentScope(scope);
+        NativeMath math = new NativeMath();
+        math.setPrototype(getObjectPrototype(scope));
+        math.setParentScope(scope);
+
+        math.defineProperty("toSource", "Math", DONTENUM | READONLY | PERMANENT);
+
+        math.defineProperty(scope, "abs", 1, NativeMath::abs, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "acos", 1, NativeMath::acos, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "acosh", 1, NativeMath::acosh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "asin", 1, NativeMath::asin, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "asinh", 1, NativeMath::asinh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "atan", 1, NativeMath::atan, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "atanh", 1, NativeMath::atanh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "atan2", 2, NativeMath::atan2, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "cbrt", 1, NativeMath::cbrt, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "ceil", 1, NativeMath::ceil, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "clz32", 1, NativeMath::clz32, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "cos", 1, NativeMath::cos, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "cosh", 1, NativeMath::cosh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "exp", 1, NativeMath::exp, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "expm1", 1, NativeMath::expm1, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "floor", 1, NativeMath::floor, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "fround", 1, NativeMath::fround, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "hypot", 2, NativeMath::hypot, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "imul", 2, NativeMath::imul, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "log", 1, NativeMath::log, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "log1p", 1, NativeMath::log1p, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "log10", 1, NativeMath::log10, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "log2", 1, NativeMath::log2, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "max", 2, NativeMath::max, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "min", 2, NativeMath::min, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "pow", 2, NativeMath::pow, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "random", 0, NativeMath::random, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "round", 1, NativeMath::round, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "sign", 1, NativeMath::sign, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "sin", 1, NativeMath::sin, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "sinh", 1, NativeMath::sinh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "sqrt", 1, NativeMath::sqrt, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "tan", 1, NativeMath::tan, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "tanh", 1, NativeMath::tanh, DONTENUM, DONTENUM | READONLY);
+        math.defineProperty(scope, "trunc", 1, NativeMath::trunc, DONTENUM, DONTENUM | READONLY);
+
+        math.defineProperty("E", Math.E, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("PI", Math.PI, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("LN10", 2.302585092994046, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("LN2", 0.6931471805599453, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("LOG2E", LOG2E, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("LOG10E", 0.4342944819032518, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("SQRT1_2", 0.7071067811865476, DONTENUM | READONLY | PERMANENT);
+        math.defineProperty("SQRT2", 1.4142135623730951, DONTENUM | READONLY | PERMANENT);
+
+        math.defineProperty(SymbolKey.TO_STRING_TAG, MATH_TAG, DONTENUM | READONLY);
+
+        ScriptableObject.defineProperty(scope, MATH_TAG, math, DONTENUM);
         if (sealed) {
-            obj.sealObject();
+            math.sealObject();
         }
-        ScriptableObject.defineProperty(scope, "Math", obj,
-                ScriptableObject.NOT_ENUMERABLE);
     }
 
-    private NativeMath() {
-    }
+    private NativeMath() {}
 
     @Override
     public String getClassName() {
-        return (String) MATH_TAG;
+        return "Math";
     }
 
     @Override
-    protected void initPrototypeId(int id) {
-        if (id == SymbolId_toStringTag) {
-            initPrototypeValue(id, SymbolKey.TO_STRING_TAG, MATH_TAG, 0);
-            return;
-        }
+    public void declare(String name, Scriptable start) {
 
-        if (id <= LAST_METHOD_ID) {
-            String name;
-            int arity;
-            switch (id) {
-                case Id_toSource:
-                    arity = 0;
-                    name = "toSource";
-                    break;
-                case Id_abs:
-                    arity = 1;
-                    name = "abs";
-                    break;
-                case Id_acos:
-                    arity = 1;
-                    name = "acos";
-                    break;
-                case Id_acosh:
-                    arity = 1;
-                    name = "acosh";
-                    break;
-                case Id_asin:
-                    arity = 1;
-                    name = "asin";
-                    break;
-                case Id_asinh:
-                    arity = 1;
-                    name = "asinh";
-                    break;
-                case Id_atan:
-                    arity = 1;
-                    name = "atan";
-                    break;
-                case Id_atanh:
-                    arity = 1;
-                    name = "atanh";
-                    break;
-                case Id_atan2:
-                    arity = 2;
-                    name = "atan2";
-                    break;
-                case Id_cbrt:
-                    arity = 1;
-                    name = "cbrt";
-                    break;
-                case Id_ceil:
-                    arity = 1;
-                    name = "ceil";
-                    break;
-                case Id_clz32:
-                    arity = 1;
-                    name = "clz32";
-                    break;
-                case Id_cos:
-                    arity = 1;
-                    name = "cos";
-                    break;
-                case Id_cosh:
-                    arity = 1;
-                    name = "cosh";
-                    break;
-                case Id_exp:
-                    arity = 1;
-                    name = "exp";
-                    break;
-                case Id_expm1:
-                    arity = 1;
-                    name = "expm1";
-                    break;
-                case Id_floor:
-                    arity = 1;
-                    name = "floor";
-                    break;
-                case Id_fround:
-                    arity = 1;
-                    name = "fround";
-                    break;
-                case Id_hypot:
-                    arity = 2;
-                    name = "hypot";
-                    break;
-                case Id_imul:
-                    arity = 2;
-                    name = "imul";
-                    break;
-                case Id_log:
-                    arity = 1;
-                    name = "log";
-                    break;
-                case Id_log1p:
-                    arity = 1;
-                    name = "log1p";
-                    break;
-                case Id_log10:
-                    arity = 1;
-                    name = "log10";
-                    break;
-                case Id_log2:
-                    arity = 1;
-                    name = "log2";
-                    break;
-                case Id_max:
-                    arity = 2;
-                    name = "max";
-                    break;
-                case Id_min:
-                    arity = 2;
-                    name = "min";
-                    break;
-                case Id_pow:
-                    arity = 2;
-                    name = "pow";
-                    break;
-                case Id_random:
-                    arity = 0;
-                    name = "random";
-                    break;
-                case Id_round:
-                    arity = 1;
-                    name = "round";
-                    break;
-                case Id_sign:
-                    arity = 1;
-                    name = "sign";
-                    break;
-                case Id_sin:
-                    arity = 1;
-                    name = "sin";
-                    break;
-                case Id_sinh:
-                    arity = 1;
-                    name = "sinh";
-                    break;
-                case Id_sqrt:
-                    arity = 1;
-                    name = "sqrt";
-                    break;
-                case Id_tan:
-                    arity = 1;
-                    name = "tan";
-                    break;
-                case Id_tanh:
-                    arity = 1;
-                    name = "tanh";
-                    break;
-                case Id_trunc:
-                    arity = 1;
-                    name = "trunc";
-                    break;
-                case Id_clamp:
-                    arity = 3;
-                    name = "clamp";
-                    break;
-                case Id_fscale:
-                    arity = 5;
-                    name = "fscale";
-                    break;
-                case Id_scale:
-                    arity = 5;
-                    name = "scale";
-                    break;
-                case Id_degrees:
-                    arity = 1;
-                    name = "degrees";
-                    break;
-                case Id_radians:
-                    arity = 1;
-                    name = "radians";
-                    break;
-                case Id_signbit:
-                    arity = 1;
-                    name = "signbit";
-                    break;
-                default:
-                    throw new IllegalStateException(String.valueOf(id));
-            }
-            initPrototypeMethod(MATH_TAG, id, name, arity);
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    private static Object abs(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        // abs(-0.0) should be 0.0, but -0.0 < 0.0 == false
+        x = (x == 0.0) ? 0.0 : (x < 0.0) ? -x : x;
+
+        return ScriptRuntime.wrapNumber(x);
+    }
+
+    private static Object acos(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x) && -1.0 <= x && x <= 1.0) {
+            x = Math.acos(x);
         } else {
-            String name;
-            double x;
-            switch (id) {
-                case Id_E:
-                    x = Math.E;
-                    name = "E";
-                    break;
-                case Id_PI:
-                    x = Math.PI;
-                    name = "PI";
-                    break;
-                case Id_LN10:
-                    x = 2.302585092994046;
-                    name = "LN10";
-                    break;
-                case Id_LN2:
-                    x = 0.6931471805599453;
-                    name = "LN2";
-                    break;
-                case Id_LOG2E:
-                    x = LOG2E;
-                    name = "LOG2E";
-                    break;
-                case Id_LOG10E:
-                    x = 0.4342944819032518;
-                    name = "LOG10E";
-                    break;
-                case Id_SQRT1_2:
-                    x = 0.7071067811865476;
-                    name = "SQRT1_2";
-                    break;
-                case Id_SQRT2:
-                    x = 1.4142135623730951;
-                    name = "SQRT2";
-                    break;
-                case Id_RAD_PER_DEG:
-                    x = RAD_PER_DEG;
-                    name = "RAD_PER_DEG";
-                    break;
-                case Id_DEG_PER_RAD:
-                    x = DEG_PER_RAD;
-                    name = "DEG_PER_RAD";
-                    break;
-                default:
-                    throw new IllegalStateException(String.valueOf(id));
-            }
-            initPrototypeValue(id, name, ScriptRuntime.wrapNumber(x),
-                    NOT_ENUMERABLE | NOT_WRITABLE | NOT_CONFIGURABLE);
+            x = Double.NaN;
         }
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    @SuppressWarnings("SelfAssignment")
-    @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args) {
-        if (!f.hasTag(MATH_TAG)) {
-            return super.execIdCall(f, cx, scope, thisObj, args);
+    private static Object acosh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x)) {
+            return Double.valueOf(Math.log(x + Math.sqrt(x * x - 1.0)));
         }
-        double x;
-        int methodId = f.methodId();
-        switch (methodId) {
-            case Id_toSource:
-                return "Math";
+        return ScriptRuntime.NaNobj;
+    }
 
-            case Id_abs:
-                x = ScriptRuntime.toNumber(args, 0);
-                // abs(-0.0) should be 0.0, but -0.0 < 0.0 == false
-                x = (x == 0.0) ? 0.0 : (x < 0.0) ? -x : x;
-                break;
+    private static Object asin(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x) && -1.0 <= x && x <= 1.0) {
+            x = Math.asin(x);
+        } else {
+            x = Double.NaN;
+        }
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_acos:
-            case Id_asin:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (!Double.isNaN(x) && -1.0 <= x && x <= 1.0) {
-                    x = (methodId == Id_acos) ? Math.acos(x) : Math.asin(x);
-                } else {
-                    x = Double.NaN;
+    private static Object asinh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (Double.isInfinite(x)) {
+            return Double.valueOf(x);
+        }
+        if (!Double.isNaN(x)) {
+            if (x == 0) {
+                if (1 / x > 0) {
+                    return ScriptRuntime.zeroObj;
                 }
-                break;
+                return ScriptRuntime.negativeZeroObj;
+            }
+            return Double.valueOf(Math.log(x + Math.sqrt(x * x + 1.0)));
+        }
+        return ScriptRuntime.NaNobj;
+    }
 
-            case Id_acosh:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (!Double.isNaN(x)) {
-                    return Math.log(x + Math.sqrt(x * x - 1.0));
+    private static Object atan(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.atan(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
+
+    private static Object atanh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x) && -1.0 <= x && x <= 1.0) {
+            if (x == 0) {
+                if (1 / x > 0) {
+                    return ScriptRuntime.zeroObj;
                 }
-                return Double.NaN;
+                return ScriptRuntime.negativeZeroObj;
+            }
+            return Double.valueOf(0.5 * Math.log((1.0 + x) / (1.0 - x)));
+        }
+        return ScriptRuntime.NaNobj;
+    }
 
-            case Id_asinh:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (x == Double.POSITIVE_INFINITY
-                        || x == Double.NEGATIVE_INFINITY) {
-                    return x;
-                }
-                if (!Double.isNaN(x)) {
-                    if (x == 0) {
-                        if (1 / x > 0) {
-                            return 0.0;
-                        }
-                        return -0.0;
-                    }
-                    return Math.log(x + Math.sqrt(x * x + 1.0));
-                }
-                return Double.NaN;
+    private static Object atan2(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.atan2(x, ScriptRuntime.toNumber(args, 1));
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_atan:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.atan(x);
-                break;
+    private static Object cbrt(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.cbrt(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_atanh:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (!Double.isNaN(x) && -1.0 <= x && x <= 1.0) {
-                    if (x == 0) {
-                        if (1 / x > 0) {
-                            return 0.0;
-                        }
-                        return -0.0;
-                    }
-                    return 0.5 * Math.log((x + 1.0) / (x - 1.0));
-                }
-                return Double.NaN;
+    private static Object ceil(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.ceil(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_atan2:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.atan2(x, ScriptRuntime.toNumber(args, 1));
-                break;
+    private static Object clz32(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (x == 0 || Double.isNaN(x) || Double.isInfinite(x)) {
+            return Double32;
+        }
+        long n = ScriptRuntime.toUint32(x);
+        if (n == 0) {
+            return Double32;
+        }
 
-            case Id_cbrt:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.cbrt(x);
-                break;
+        int place = 0;
+        if ((n & 0xFFFF0000) != 0) {
+            place += 16;
+            n >>>= 16;
+        }
+        if ((n & 0xFF00) != 0) {
+            place += 8;
+            n >>>= 8;
+        }
+        if ((n & 0xF0) != 0) {
+            place += 4;
+            n >>>= 4;
+        }
+        if ((n & 0b1100) != 0) {
+            place += 2;
+            n >>>= 2;
+        }
+        if ((n & 0b10) != 0) {
+            place += 1;
+            n >>>= 1;
+        }
+        if ((n & 0b1) != 0) {
+            place += 1;
+        }
 
-            case Id_ceil:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.ceil(x);
-                break;
+        return Double.valueOf(32 - place);
+    }
 
-            case Id_clz32:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (x == 0
-                        || Double.isNaN(x)
-                        || x == Double.POSITIVE_INFINITY
-                        || x == Double.NEGATIVE_INFINITY) {
-                    return 32;
-                }
-                long n = ScriptRuntime.toUint32(x);
-                if (n == 0) {
-                    return 32;
-                }
-                return 31 - Math.floor(Math.log(n >>> 0) * LOG2E);
+    private static Object cos(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Double.isInfinite(x) ? Double.NaN : Math.cos(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_cos:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = (x == Double.POSITIVE_INFINITY
-                        || x == Double.NEGATIVE_INFINITY)
-                        ? Double.NaN : Math.cos(x);
-                break;
+    private static Object cosh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.cosh(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_cosh:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.cosh(x);
-                break;
+    private static Object exp(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x =
+                (x == Double.POSITIVE_INFINITY)
+                        ? x
+                        : (x == Double.NEGATIVE_INFINITY) ? 0.0 : Math.exp(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_hypot:
-                x = js_hypot(args);
-                break;
+    private static Object expm1(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.expm1(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_exp:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = (x == Double.POSITIVE_INFINITY) ? x
-                        : (x == Double.NEGATIVE_INFINITY) ? 0.0
-                        : Math.exp(x);
-                break;
+    private static Object floor(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.floor(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_expm1:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.expm1(x);
-                break;
+    private static Object fround(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        // Rely on Java to truncate down to a "float" here"
+        x = (float) x;
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_floor:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.floor(x);
-                break;
+    // Based on code from
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/hypot
+    private static Object hypot(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        if (args == null) {
+            return 0.0;
+        }
+        double y = 0.0;
 
-            case Id_fround:
-                x = ScriptRuntime.toNumber(args, 0);
-                // Rely on Java to truncate down to a "float" here"
-                x = (float) x;
-                break;
+        // Spec and tests say that any "Infinity" result takes precedence.
+        boolean hasNaN = false;
+        boolean hasInfinity = false;
 
-            case Id_imul:
-                return js_imul(args);
+        for (Object o : args) {
+            double d = ScriptRuntime.toNumber(o);
+            if (Double.isNaN(d)) {
+                hasNaN = true;
+            } else if (Double.isInfinite(d)) {
+                hasInfinity = true;
+            } else {
+                y += d * d;
+            }
+        }
 
-            case Id_log:
-                x = ScriptRuntime.toNumber(args, 0);
-                // Java's log(<0) = -Infinity; we need NaN
-                x = (x < 0) ? Double.NaN : Math.log(x);
-                break;
+        if (hasInfinity) {
+            return Double.POSITIVE_INFINITY;
+        }
+        if (hasNaN) {
+            return Double.NaN;
+        }
+        return Math.sqrt(y);
+    }
 
-            case Id_log1p:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.log1p(x);
-                break;
+    private static Object imul(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        if (args == null) {
+            return 0;
+        }
 
-            case Id_log10:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.log10(x);
-                break;
+        int x = ScriptRuntime.toInt32(args, 0);
+        int y = ScriptRuntime.toInt32(args, 1);
 
-            case Id_log2:
-                x = ScriptRuntime.toNumber(args, 0);
-                // Java's log(<0) = -Infinity; we need NaN
-                x = (x < 0) ? Double.NaN : Math.log(x) * LOG2E;
-                break;
+        return ScriptRuntime.wrapNumber(x * y);
+    }
 
-            case Id_max:
-            case Id_min:
-                x = (methodId == Id_max)
-                        ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-                for (int i = 0; i != args.length; ++i) {
-                    double d = ScriptRuntime.toNumber(args[i]);
-                    if (Double.isNaN(d)) {
-                        x = d; // NaN
-                        break;
-                    }
-                    if (methodId == Id_max) {
-                        // if (x < d) x = d; does not work due to -0.0 >= +0.0
-                        x = Math.max(x, d);
-                    } else {
-                        x = Math.min(x, d);
-                    }
-                }
-                break;
+    private static Object log(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        // Java's log(<0) = -Infinity; we need NaN
+        x = (x < 0) ? Double.NaN : Math.log(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_pow:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = js_pow(x, ScriptRuntime.toNumber(args, 1));
-                break;
+    private static Object log1p(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.log1p(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_random:
-                x = Math.random();
-                break;
+    private static Object log10(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.log10(x);
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_round:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (!Double.isNaN(x) && x != Double.POSITIVE_INFINITY
-                        && x != Double.NEGATIVE_INFINITY) {
-                    // Round only finite x
-                    long l = Math.round(x);
-                    if (l != 0) {
-                        x = l;
-                    } else {
-                        // We must propagate the sign of d into the result
-                        if (x < 0.0) {
-                            x = ScriptRuntime.negativeZero;
-                        } else if (x != 0.0) {
-                            x = 0.0;
-                        }
-                    }
-                }
-                break;
+    private static Object log2(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        // Java's log(<0) = -Infinity; we need NaN
+        x = (x < 0) ? Double.NaN : Math.log(x) * LOG2E;
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_sign:
-                x = ScriptRuntime.toNumber(args, 0);
-                if (!Double.isNaN(x)) {
-                    if (x == 0) {
-                        if (1 / x > 0) {
-                            return 0.0;
-                        }
-                        return -0.0;
-                    }
-                    return Math.signum(x);
-                }
-                return Double.NaN;
+    private static Object max(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i != args.length; ++i) {
+            double d = ScriptRuntime.toNumber(args[i]);
+            // if (x < d) x = d; does not work due to -0.0 >= +0.0
+            x = Math.max(x, d);
+        }
+        return ScriptRuntime.wrapNumber(x);
+    }
 
-            case Id_sin:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = (x == Double.POSITIVE_INFINITY
-                        || x == Double.NEGATIVE_INFINITY)
-                        ? Double.NaN : Math.sin(x);
-                break;
-
-            case Id_sinh:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.sinh(x);
-                break;
-
-            case Id_sqrt:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.sqrt(x);
-                break;
-
-            case Id_tan:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.tan(x);
-                break;
-
-            case Id_tanh:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = Math.tanh(x);
-                break;
-
-            case Id_trunc:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = js_trunc(x);
-                break;
-
-            case Id_scale:
-                x = js_scale(
-                        ScriptRuntime.toNumber(args, 0),
-                        ScriptRuntime.toNumber(args, 1),
-                        ScriptRuntime.toNumber(args, 2),
-                        ScriptRuntime.toNumber(args, 3),
-                        ScriptRuntime.toNumber(args, 4)
-                );
-                break;
-
-            case Id_fscale:
-                x = js_fscale(
-                        ScriptRuntime.toNumber(args, 0),
-                        ScriptRuntime.toNumber(args, 1),
-                        ScriptRuntime.toNumber(args, 2),
-                        ScriptRuntime.toNumber(args, 3),
-                        ScriptRuntime.toNumber(args, 4)
-                );
-                break;
-
-            case Id_degrees:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = js_degrees(x);
-                break;
-
-            case Id_radians:
-                x = ScriptRuntime.toNumber(args, 0);
-                x = js_radians(x);
-                break;
-
-            case Id_clamp:
-                x = js_clamp(
-                        ScriptRuntime.toNumber(args, 0),
-                        ScriptRuntime.toNumber(args, 1),
-                        ScriptRuntime.toNumber(args, 2)
-                );
-                break;
-
-            case Id_signbit:
-                return js_signbit(ScriptRuntime.toNumber(args, 0));
-
-            default:
-                throw new IllegalStateException(String.valueOf(methodId));
+    private static Object min(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = Double.POSITIVE_INFINITY;
+        for (int i = 0; i != args.length; ++i) {
+            double d = ScriptRuntime.toNumber(args[i]);
+            // if (x < d) x = d; does not work due to -0.0 >= +0.0
+            x = Math.min(x, d);
         }
         return ScriptRuntime.wrapNumber(x);
     }
 
     // See Ecma 15.8.2.13
-    private static double js_pow(double x, double y) {
+    private static Object pow(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        double y = ScriptRuntime.toNumber(args, 1);
         double result;
         if (Double.isNaN(y)) {
             // y is NaN, result is always NaN
@@ -631,476 +407,79 @@ final class NativeMath extends IdScriptableObject {
                 }
             }
         }
-        return result;
+        return ScriptRuntime.wrapNumber(result);
     }
 
-    // Based on code from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/hypot
-    private static double js_hypot(Object[] args) {
-        if (args == null) {
-            return 0.0;
-        }
-        double y = 0.0;
+    private static Object random(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        return ScriptRuntime.wrapNumber(Math.random());
+    }
 
-        for (Object o : args) {
-            double d = ScriptRuntime.toNumber(o);
-            if (d == ScriptRuntime.NaN) {
-                return d;
+    private static Object round(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x) && !Double.isInfinite(x)) {
+            // Round only finite x
+            long l = Math.round(x);
+            if (l != 0) {
+                x = l;
+            } else {
+                // We must propagate the sign of d into the result
+                if (x < 0.0) {
+                    x = ScriptRuntime.negativeZero;
+                } else if (x != 0.0) {
+                    x = 0.0;
+                }
             }
-            if ((d == Double.POSITIVE_INFINITY) || (d == Double.NEGATIVE_INFINITY)) {
-                return Double.POSITIVE_INFINITY;
+        }
+        return ScriptRuntime.wrapNumber(x);
+    }
+
+    private static Object sign(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        if (!Double.isNaN(x)) {
+            if (x == 0) {
+                if (1 / x > 0) {
+                    return ScriptRuntime.zeroObj;
+                }
+                return ScriptRuntime.negativeZeroObj;
             }
-            y += d * d;
+            return Double.valueOf(Math.signum(x));
         }
-        return Math.sqrt(y);
+        return ScriptRuntime.NaNobj;
     }
 
-    private static double js_trunc(double d) {
-        return ((d < 0.0) ? Math.ceil(d) : Math.floor(d));
+    private static Object sin(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Double.isInfinite(x) ? Double.NaN : Math.sin(x);
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    // From EcmaScript 6 section 20.2.2.19
-    private static int js_imul(Object[] args) {
-        if (args == null) {
-            return 0;
-        }
-
-        int x = ScriptRuntime.toInt32(args, 0);
-        int y = ScriptRuntime.toInt32(args, 1);
-        return x * y;
+    private static Object sinh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.sinh(x);
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    private static double js_fscale(double x, double inLow, double inHigh, double outLow, double outHigh) {
-        if (Double.isNaN(x) || Double.isNaN(inLow) || Double.isNaN(inHigh) || Double.isNaN(outLow) || Double.isNaN(outHigh)) {
-            return Double.NaN;
-        } else if (Double.isInfinite(x)) {
-            return x;
-        }
-
-        return (float) ((x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow);
+    private static Object sqrt(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.sqrt(x);
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    @SuppressWarnings("IntegerDivisionInFloatingPointContext")
-    private static double js_scale(double x, double inLow, double inHigh, double outLow, double outHigh) {
-        if (Double.isNaN(x) || Double.isNaN(inLow) || Double.isNaN(inHigh) || Double.isNaN(outLow) || Double.isNaN(outHigh)) {
-            return Double.NaN;
-        }
-
-        if (Double.isInfinite(x)) {
-            return x;
-        }
-
-        int ix = (int) x;
-        int iinLow = (int) inLow;
-        int iinHigh = (int) inHigh;
-        int ioutLow = (int) outLow;
-        int ioutHigh = (int) outHigh;
-
-        return (ix - iinLow) * (ioutHigh - ioutLow) / (iinHigh - iinLow) + ioutLow;
+    private static Object tan(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.tan(x);
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    private static double js_degrees(double x) {
-        if (Double.isNaN(x) || Double.isInfinite(x)) {
-            return x;
-        }
-
-        return x * RAD_PER_DEG;
+    private static Object tanh(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = Math.tanh(x);
+        return ScriptRuntime.wrapNumber(x);
     }
 
-    private static double js_radians(double x) {
-        if (Double.isNaN(x) || Double.isInfinite(x)) {
-            return x;
-        }
-
-        return x * DEG_PER_RAD;
+    private static Object trunc(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        double x = ScriptRuntime.toNumber(args, 0);
+        x = ((x < 0.0) ? Math.ceil(x) : Math.floor(x));
+        return ScriptRuntime.wrapNumber(x);
     }
-
-    private static double js_clamp(double x, double lower, double upper) {
-        if (Double.isNaN(x) || Double.isNaN(lower) || Double.isNaN(upper)) {
-            return Double.NaN;
-        }
-
-        return Math.min(Math.max(x, lower), upper);
-    }
-
-    private static boolean js_signbit(double x) {
-        return !Double.isNaN(x) && (x < 0 || ScriptRuntime.same(x, -0.0D));
-    }
-
-    @Override
-    protected int findPrototypeId(Symbol key) {
-        if (SymbolKey.TO_STRING_TAG.equals(key)) {
-            return SymbolId_toStringTag;
-        }
-
-        return 0;
-    }
-
-    // #string_id_map#
-
-    @Override
-    protected int findPrototypeId(String s) {
-        int id;
-// #generated# Last update: 2019-11-23 18:20:03 CST
-        L0:
-        {
-            id = 0;
-            String X = null;
-            int c;
-            L:
-            switch (s.length()) {
-                case 1:
-                    if (s.charAt(0) == 'E') {
-                        id = Id_E;
-                        break L0;
-                    }
-                    break L;
-                case 2:
-                    if (s.charAt(0) == 'P' && s.charAt(1) == 'I') {
-                        id = Id_PI;
-                        break L0;
-                    }
-                    break L;
-                case 3:
-                    switch (s.charAt(0)) {
-                        case 'L':
-                            if (s.charAt(2) == '2' && s.charAt(1) == 'N') {
-                                id = Id_LN2;
-                                break L0;
-                            }
-                            break L;
-                        case 'a':
-                            if (s.charAt(2) == 's' && s.charAt(1) == 'b') {
-                                id = Id_abs;
-                                break L0;
-                            }
-                            break L;
-                        case 'c':
-                            if (s.charAt(2) == 's' && s.charAt(1) == 'o') {
-                                id = Id_cos;
-                                break L0;
-                            }
-                            break L;
-                        case 'e':
-                            if (s.charAt(2) == 'p' && s.charAt(1) == 'x') {
-                                id = Id_exp;
-                                break L0;
-                            }
-                            break L;
-                        case 'l':
-                            if (s.charAt(2) == 'g' && s.charAt(1) == 'o') {
-                                id = Id_log;
-                                break L0;
-                            }
-                            break L;
-                        case 'm':
-                            c = s.charAt(2);
-                            if (c == 'n') {
-                                if (s.charAt(1) == 'i') {
-                                    id = Id_min;
-                                    break L0;
-                                }
-                            } else if (c == 'x') {
-                                if (s.charAt(1) == 'a') {
-                                    id = Id_max;
-                                    break L0;
-                                }
-                            }
-                            break L;
-                        case 'p':
-                            if (s.charAt(2) == 'w' && s.charAt(1) == 'o') {
-                                id = Id_pow;
-                                break L0;
-                            }
-                            break L;
-                        case 's':
-                            if (s.charAt(2) == 'n' && s.charAt(1) == 'i') {
-                                id = Id_sin;
-                                break L0;
-                            }
-                            break L;
-                        case 't':
-                            if (s.charAt(2) == 'n' && s.charAt(1) == 'a') {
-                                id = Id_tan;
-                                break L0;
-                            }
-                            break L;
-                    }
-                    break L;
-                case 4:
-                    switch (s.charAt(1)) {
-                        case 'N':
-                            X = "LN10";
-                            id = Id_LN10;
-                            break L;
-                        case 'a':
-                            X = "tanh";
-                            id = Id_tanh;
-                            break L;
-                        case 'b':
-                            X = "cbrt";
-                            id = Id_cbrt;
-                            break L;
-                        case 'c':
-                            X = "acos";
-                            id = Id_acos;
-                            break L;
-                        case 'e':
-                            X = "ceil";
-                            id = Id_ceil;
-                            break L;
-                        case 'i':
-                            c = s.charAt(3);
-                            if (c == 'h') {
-                                if (s.charAt(0) == 's' && s.charAt(2) == 'n') {
-                                    id = Id_sinh;
-                                    break L0;
-                                }
-                            } else if (c == 'n') {
-                                if (s.charAt(0) == 's' && s.charAt(2) == 'g') {
-                                    id = Id_sign;
-                                    break L0;
-                                }
-                            }
-                            break L;
-                        case 'm':
-                            X = "imul";
-                            id = Id_imul;
-                            break L;
-                        case 'o':
-                            c = s.charAt(0);
-                            if (c == 'c') {
-                                if (s.charAt(2) == 's' && s.charAt(3) == 'h') {
-                                    id = Id_cosh;
-                                    break L0;
-                                }
-                            } else if (c == 'l') {
-                                if (s.charAt(2) == 'g' && s.charAt(3) == '2') {
-                                    id = Id_log2;
-                                    break L0;
-                                }
-                            }
-                            break L;
-                        case 'q':
-                            X = "sqrt";
-                            id = Id_sqrt;
-                            break L;
-                        case 's':
-                            X = "asin";
-                            id = Id_asin;
-                            break L;
-                        case 't':
-                            X = "atan";
-                            id = Id_atan;
-                            break L;
-                    }
-                    break L;
-                case 5:
-                    switch (s.charAt(0)) {
-                        case 'L':
-                            X = "LOG2E";
-                            id = Id_LOG2E;
-                            break L;
-                        case 'S':
-                            X = "SQRT2";
-                            id = Id_SQRT2;
-                            break L;
-                        case 'a':
-                            c = s.charAt(1);
-                            if (c == 'c') {
-                                X = "acosh";
-                                id = Id_acosh;
-                            } else if (c == 's') {
-                                X = "asinh";
-                                id = Id_asinh;
-                            } else if (c == 't') {
-                                c = s.charAt(4);
-                                if (c == '2') {
-                                    if (s.charAt(2) == 'a' && s.charAt(3) == 'n') {
-                                        id = Id_atan2;
-                                        break L0;
-                                    }
-                                } else if (c == 'h') {
-                                    if (s.charAt(2) == 'a' && s.charAt(3) == 'n') {
-                                        id = Id_atanh;
-                                        break L0;
-                                    }
-                                }
-                            }
-                            break L;
-                        case 'c':
-                            c = s.charAt(4);
-                            if (c == '2') {
-                                X = "clz32";
-                                id = Id_clz32;
-                            } else if (c == 'p') {
-                                X = "clamp";
-                                id = Id_clamp;
-                            }
-                            break L;
-                        case 'e':
-                            X = "expm1";
-                            id = Id_expm1;
-                            break L;
-                        case 'f':
-                            X = "floor";
-                            id = Id_floor;
-                            break L;
-                        case 'h':
-                            X = "hypot";
-                            id = Id_hypot;
-                            break L;
-                        case 'l':
-                            c = s.charAt(4);
-                            if (c == '0') {
-                                X = "log10";
-                                id = Id_log10;
-                            } else if (c == 'p') {
-                                X = "log1p";
-                                id = Id_log1p;
-                            }
-                            break L;
-                        case 'r':
-                            X = "round";
-                            id = Id_round;
-                            break L;
-                        case 's':
-                            X = "scale";
-                            id = Id_scale;
-                            break L;
-                        case 't':
-                            X = "trunc";
-                            id = Id_trunc;
-                            break L;
-                    }
-                    break L;
-                case 6:
-                    switch (s.charAt(1)) {
-                        case 'O':
-                            X = "LOG10E";
-                            id = Id_LOG10E;
-                            break L;
-                        case 'a':
-                            X = "random";
-                            id = Id_random;
-                            break L;
-                        case 'r':
-                            X = "fround";
-                            id = Id_fround;
-                            break L;
-                        case 's':
-                            X = "fscale";
-                            id = Id_fscale;
-                            break L;
-                    }
-                    break L;
-                case 7:
-                    switch (s.charAt(0)) {
-                        case 'S':
-                            X = "SQRT1_2";
-                            id = Id_SQRT1_2;
-                            break L;
-                        case 'd':
-                            X = "degrees";
-                            id = Id_degrees;
-                            break L;
-                        case 'r':
-                            X = "radians";
-                            id = Id_radians;
-                            break L;
-                        case 's':
-                            X = "signbit";
-                            id = Id_signbit;
-                            break L;
-                    }
-                    break L;
-                case 8:
-                    X = "toSource";
-                    id = Id_toSource;
-                    break L;
-                case 11:
-                    c = s.charAt(0);
-                    if (c == 'D') {
-                        X = "DEG_PER_RAD";
-                        id = Id_DEG_PER_RAD;
-                    } else if (c == 'R') {
-                        X = "RAD_PER_DEG";
-                        id = Id_RAD_PER_DEG;
-                    }
-                    break L;
-            }
-            if (X != null && X != s && !X.equals(s)) id = 0;
-            break L0;
-        }
-// #/generated#
-        return id;
-    }
-
-    private static final int
-            Id_toSource = 1,
-            Id_abs = 2,
-            Id_acos = 3,
-            Id_asin = 4,
-            Id_atan = 5,
-            Id_atan2 = 6,
-            Id_ceil = 7,
-            Id_cos = 8,
-            Id_exp = 9,
-            Id_floor = 10,
-            Id_log = 11,
-            Id_max = 12,
-            Id_min = 13,
-            Id_pow = 14,
-            Id_random = 15,
-            Id_round = 16,
-            Id_sin = 17,
-            Id_sqrt = 18,
-            Id_tan = 19,
-            Id_cbrt = 20,
-            Id_cosh = 21,
-            Id_expm1 = 22,
-            Id_hypot = 23,
-            Id_log1p = 24,
-            Id_log10 = 25,
-            Id_sinh = 26,
-            Id_tanh = 27,
-            Id_imul = 28,
-            Id_trunc = 29,
-            Id_acosh = 30,
-            Id_asinh = 31,
-            Id_atanh = 32,
-            Id_sign = 33,
-            Id_log2 = 34,
-            Id_fround = 35,
-            Id_clz32 = 36,
-            Id_clamp = 37,
-            Id_degrees = 38,
-            Id_fscale = 39,
-            Id_radians = 40,
-            Id_scale = 41,
-            Id_signbit = 42,
-
-    LAST_METHOD_ID = Id_signbit;
-
-/* Missing from ES6:
-    clz32
-    fround
-    log2
- */
-
-    private static final int
-            Id_E = LAST_METHOD_ID + 1,
-            Id_PI = LAST_METHOD_ID + 2,
-            Id_LN10 = LAST_METHOD_ID + 3,
-            Id_LN2 = LAST_METHOD_ID + 4,
-            Id_LOG2E = LAST_METHOD_ID + 5,
-            Id_LOG10E = LAST_METHOD_ID + 6,
-            Id_SQRT1_2 = LAST_METHOD_ID + 7,
-            Id_SQRT2 = LAST_METHOD_ID + 8,
-            Id_DEG_PER_RAD = LAST_METHOD_ID + 9,
-            Id_RAD_PER_DEG = LAST_METHOD_ID + 10,
-            SymbolId_toStringTag = LAST_METHOD_ID + 11,
-
-    MAX_ID = SymbolId_toStringTag;
-
-// #/string_id_map#
 }

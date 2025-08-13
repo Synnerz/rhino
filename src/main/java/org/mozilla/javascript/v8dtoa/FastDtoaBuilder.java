@@ -47,7 +47,6 @@ public class FastDtoaBuilder {
             formatted = true;
         }
         return new String(chars, 0, end);
-
     }
 
     private void toFixedFormat(int firstDigit, int decPoint) {
@@ -105,7 +104,5 @@ public class FastDtoaBuilder {
         }
     }
 
-    final static char[] digits = {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
-    };
+    static final char[] digits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 }

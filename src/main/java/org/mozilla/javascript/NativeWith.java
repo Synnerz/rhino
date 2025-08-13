@@ -7,13 +7,10 @@
 package org.mozilla.javascript;
 
 import java.io.Serializable;
-import java.util.Map;
 
 /**
- * This class implements the object lookup required for the
- * <code>with</code> statement.
- * It simply delegates every action to its prototype except
- * for operations on its parent.
+ * This class implements the object lookup required for the <code>with</code> statement. It simply
+ * delegates every action to its prototype except for operations on its parent.
  */
 public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall, Serializable {
     private static final long serialVersionUID = 1L;
@@ -24,8 +21,7 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
         obj.setParentScope(scope);
         obj.setPrototype(ScriptableObject.getObjectPrototype(scope));
 
-        IdFunctionObject ctor = new IdFunctionObject(obj, FTAG, Id_constructor,
-                "With", 0, scope);
+        IdFunctionObject ctor = new IdFunctionObject(obj, FTAG, Id_constructor, "With", 0, scope);
         ctor.markAsConstructor(obj);
         if (sealed) {
             ctor.sealObject();
@@ -33,33 +29,10 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
         ctor.exportAsScopeProperty();
     }
 
-    private NativeWith() {
-    }
+    private NativeWith() {}
 
     protected NativeWith(Scriptable parent, Scriptable prototype) {
         this.parent = parent;
-
-        if (ScriptableObject.hasProperty(prototype, SymbolKey.UNSCOPABLES)) {
-            Object unscopables = ScriptableObject.getProperty(prototype, SymbolKey.UNSCOPABLES);
-
-            if (unscopables instanceof NativeObject) {
-                NativeObject obj = (NativeObject) unscopables;
-
-                for (Map.Entry<Object, Object> element : obj.entrySet()) {
-                    Object k = element.getKey();
-                    Object v = element.getValue();
-
-                    if (v instanceof Boolean && (boolean) v) {
-                        if (k instanceof String) {
-                            ScriptableObject.deleteProperty(prototype, (String) k);
-                        } else if (k instanceof Integer) {
-                            ScriptableObject.deleteProperty(prototype, (int) k);
-                        }
-                    }
-                }
-            }
-        }
-
         this.prototype = prototype;
     }
 
@@ -87,10 +60,7 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
     }
 
     @Override
-    public Object get(String id, Scriptable start, boolean isPrivate) {
-        if (isPrivate)
-            throw Kit.codeBug("Unexpected private get from with statement");
-
+    public Object get(String id, Scriptable start) {
         if (start == this) {
             start = prototype;
         }
@@ -117,11 +87,8 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
     }
 
     @Override
-    public void put(String id, Scriptable start, Object value, boolean isPrivate) {
-        if (isPrivate)
-            throw Kit.codeBug("Unexpected private put from with statement");
-        if (start == this)
-            start = prototype;
+    public void put(String id, Scriptable start, Object value) {
+        if (start == this) start = prototype;
         prototype.put(id, start, value);
     }
 
@@ -137,23 +104,18 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
 
     @Override
     public void put(int index, Scriptable start, Object value) {
-        if (start == this)
-            start = prototype;
+        if (start == this) start = prototype;
         prototype.put(index, start, value);
     }
 
     @Override
     public void declare(String name, Scriptable start) {
-        if (start == this)
-            start = prototype;
-        prototype.declare(name, start);
+
     }
 
     @Override
     public void declareConst(String name, Scriptable start) {
-        if (start == this)
-            start = prototype;
-        prototype.declare(name, start);
+
     }
 
     @Override
@@ -167,7 +129,6 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
             ((SymbolScriptable) prototype).delete(key);
         }
     }
-
 
     @Override
     public void delete(int index) {
@@ -209,20 +170,18 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
         return prototype.hasInstance(value);
     }
 
-    /**
-     * Must return null to continue looping or the final collection result.
-     */
+    /** Must return null to continue looping or the final collection result. */
     protected Object updateDotQuery(boolean value) {
         // NativeWith itself does not support it
         throw new IllegalStateException();
     }
 
     @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args) {
+    public Object execIdCall(
+            IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (f.hasTag(FTAG)) {
             if (f.methodId() == Id_constructor) {
-                throw Context.reportRuntimeError1("msg.cant.call.indirect", "With");
+                throw Context.reportRuntimeErrorById("msg.cant.call.indirect", "With");
             }
         }
         throw f.unknown();
@@ -240,17 +199,17 @@ public class NativeWith implements Scriptable, SymbolScriptable, IdFunctionCall,
         ScriptRuntime.checkDeprecated(cx, "With");
         scope = ScriptableObject.getTopLevelScope(scope);
         NativeWith thisObj = new NativeWith();
-        thisObj.setPrototype(args.length == 0
-                ? ScriptableObject.getObjectPrototype(scope)
-                : ScriptRuntime.toObject(cx, scope, args[0]));
+        thisObj.setPrototype(
+                args.length == 0
+                        ? ScriptableObject.getObjectPrototype(scope)
+                        : ScriptRuntime.toObject(cx, scope, args[0]));
         thisObj.setParentScope(scope);
         return thisObj;
     }
 
     private static final Object FTAG = "With";
 
-    private static final int
-            Id_constructor = 1;
+    private static final int Id_constructor = 1;
 
     protected Scriptable prototype;
     protected Scriptable parent;

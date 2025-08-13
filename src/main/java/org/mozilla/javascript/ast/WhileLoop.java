@@ -9,7 +9,7 @@ package org.mozilla.javascript.ast;
 import org.mozilla.javascript.Token;
 
 /**
- * While statement.  Node type is {@link Token#WHILE}.
+ * While statement. Node type is {@link Token#WHILE}.
  *
  * <pre><i>WhileStatement</i>:
  *     <b>while</b> <b>(</b> Expression <b>)</b> Statement</pre>
@@ -22,8 +22,7 @@ public class WhileLoop extends Loop {
         type = Token.WHILE;
     }
 
-    public WhileLoop() {
-    }
+    public WhileLoop() {}
 
     public WhileLoop(int pos) {
         super(pos);
@@ -33,9 +32,7 @@ public class WhileLoop extends Loop {
         super(pos, len);
     }
 
-    /**
-     * Returns loop condition
-     */
+    /** Returns loop condition */
     public AstNode getCondition() {
         return condition;
     }
@@ -73,9 +70,7 @@ public class WhileLoop extends Loop {
         return sb.toString();
     }
 
-    /**
-     * Visits this node, the condition, then the body.
-     */
+    /** Visits this node, the condition, then the body. */
     @Override
     public void visit(NodeVisitor v) {
         if (v.visit(this)) {

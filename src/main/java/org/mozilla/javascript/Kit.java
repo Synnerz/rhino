@@ -10,12 +10,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
-/**
- * Collection of utilities
- */
-
+/** Collection of utilities */
 public class Kit {
     public static Class<?> classOrNull(String className) {
         try {
@@ -30,10 +28,7 @@ public class Kit {
         return null;
     }
 
-    /**
-     * Attempt to load the class of the given name. Note that the type parameter
-     * isn't checked.
-     */
+    /** Attempt to load the class of the given name. Note that the type parameter isn't checked. */
     public static Class<?> classOrNull(ClassLoader loader, String className) {
         try {
             return loader.loadClass(className);
@@ -49,32 +44,34 @@ public class Kit {
 
     static Object newInstanceOrNull(Class<?> cl) {
         try {
-            return cl.newInstance();
-        } catch (SecurityException x) {
-        } catch (LinkageError ex) {
-        } catch (InstantiationException x) {
-        } catch (IllegalAccessException x) {
+            return cl.getDeclaredConstructor().newInstance();
+        } catch (SecurityException
+                | LinkageError
+                | InstantiationException
+                | IllegalAccessException
+                | NoSuchMethodException
+                | InvocationTargetException x) {
         }
         return null;
     }
 
-    /**
-     * Check that testClass is accessible from the given loader.
-     */
+    /** Check that testClass is accessible from the given loader. */
     static boolean testIfCanLoadRhinoClasses(ClassLoader loader) {
         Class<?> testClass = ScriptRuntime.ContextFactoryClass;
         Class<?> x = Kit.classOrNull(loader, testClass.getName());
-        // The check covers the case when x == null =>
-        // loader does not know about testClass or the case
-        // when x != null && x != testClass =>
-        // loader loads a class unrelated to testClass
-        return x == testClass;
+        if (x != testClass) {
+            // The check covers the case when x == null =>
+            // loader does not know about testClass or the case
+            // when x != null && x != testClass =>
+            // loader loads a class unrelated to testClass
+            return false;
+        }
+        return true;
     }
 
     /**
-     * If character <code>c</code> is a hexadecimal digit, return
-     * <code>accumulator</code> * 16 plus corresponding
-     * number. Otherise return -1.
+     * If character <code>c</code> is a hexadecimal digit, return <code>accumulator</code> * 16 plus
+     * corresponding number. Otherise return -1.
      */
     public static int xDigitToInt(int c, int accumulator) {
         check:
@@ -102,12 +99,12 @@ public class Kit {
     }
 
     /**
-     * Add <i>listener</i> to <i>bag</i> of listeners.
-     * The function does not modify <i>bag</i> and return a new collection
-     * containing <i>listener</i> and all listeners from <i>bag</i>.
-     * Bag without listeners always represented as the null value.
-     * <p>
-     * Usage example:
+     * Add <i>listener</i> to <i>bag</i> of listeners. The function does not modify <i>bag</i> and
+     * return a new collection containing <i>listener</i> and all listeners from <i>bag</i>. Bag
+     * without listeners always represented as the null value.
+     *
+     * <p>Usage example:
+     *
      * <pre>
      *     private volatile Object changeListeners;
      *
@@ -143,9 +140,8 @@ public class Kit {
      * </pre>
      *
      * @param listener Listener to add to <i>bag</i>
-     * @param bag      Current collection of listeners.
-     * @return A new bag containing all listeners from <i>bag</i> and
-     * <i>listener</i>.
+     * @param bag Current collection of listeners.
+     * @return A new bag containing all listeners from <i>bag</i> and <i>listener</i>.
      * @see #removeListener(Object bag, Object listener)
      * @see #getListener(Object bag, int index)
      */
@@ -156,7 +152,7 @@ public class Kit {
         if (bag == null) {
             bag = listener;
         } else if (!(bag instanceof Object[])) {
-            bag = new Object[]{bag, listener};
+            bag = new Object[] {bag, listener};
         } else {
             Object[] array = (Object[]) bag;
             int L = array.length;
@@ -172,18 +168,15 @@ public class Kit {
     }
 
     /**
-     * Remove <i>listener</i> from <i>bag</i> of listeners.
-     * The function does not modify <i>bag</i> and return a new collection
-     * containing all listeners from <i>bag</i> except <i>listener</i>.
-     * If <i>bag</i> does not contain <i>listener</i>, the function returns
-     * <i>bag</i>.
-     * <p>
-     * For usage example, see {@link #addListener(Object bag, Object listener)}.
+     * Remove <i>listener</i> from <i>bag</i> of listeners. The function does not modify <i>bag</i>
+     * and return a new collection containing all listeners from <i>bag</i> except <i>listener</i>.
+     * If <i>bag</i> does not contain <i>listener</i>, the function returns <i>bag</i>.
+     *
+     * <p>For usage example, see {@link #addListener(Object bag, Object listener)}.
      *
      * @param listener Listener to remove from <i>bag</i>
-     * @param bag      Current collection of listeners.
-     * @return A new bag containing all listeners from <i>bag</i> except
-     * <i>listener</i>.
+     * @param bag Current collection of listeners.
+     * @return A new bag containing all listeners from <i>bag</i> except <i>listener</i>.
      * @see #addListener(Object bag, Object listener)
      * @see #getListener(Object bag, int index)
      */
@@ -223,12 +216,12 @@ public class Kit {
     }
 
     /**
-     * Get listener at <i>index</i> position in <i>bag</i> or null if
-     * <i>index</i> equals to number of listeners in <i>bag</i>.
-     * <p>
-     * For usage example, see {@link #addListener(Object bag, Object listener)}.
+     * Get listener at <i>index</i> position in <i>bag</i> or null if <i>index</i> equals to number
+     * of listeners in <i>bag</i>.
      *
-     * @param bag   Current collection of listeners.
+     * <p>For usage example, see {@link #addListener(Object bag, Object listener)}.
+     *
+     * @param bag Current collection of listeners.
      * @param index Index of the listener to access.
      * @return Listener at the given index or null.
      * @see #addListener(Object bag, Object listener)
@@ -236,10 +229,8 @@ public class Kit {
      */
     public static Object getListener(Object bag, int index) {
         if (index == 0) {
-            if (bag == null)
-                return null;
-            if (!(bag instanceof Object[]))
-                return bag;
+            if (bag == null) return null;
+            if (!(bag instanceof Object[])) return bag;
             Object[] array = (Object[]) bag;
             // bag has at least 2 elements if it is array
             if (array.length < 2) throw new IllegalArgumentException();
@@ -257,16 +248,15 @@ public class Kit {
             Object[] array = (Object[]) bag;
             int L = array.length;
             if (L < 2) throw new IllegalArgumentException();
-            if (index == L)
-                return null;
+            if (index == L) return null;
             return array[index];
         }
     }
 
-    static Object initHash(Map<Object, Object> h, Object key, Object initialValue, boolean override) {
+    static Object initHash(Map<Object, Object> h, Object key, Object initialValue) {
         synchronized (h) {
             Object current = h.get(key);
-            if (current == null || override) {
+            if (current == null) {
                 h.put(key, initialValue);
             } else {
                 initialValue = current;
@@ -275,7 +265,7 @@ public class Kit {
         return initialValue;
     }
 
-    private final static class ComplexKey {
+    private static final class ComplexKey {
         private Object key1;
         private Object key2;
         private int hash;
@@ -287,8 +277,7 @@ public class Kit {
 
         @Override
         public boolean equals(Object anotherObj) {
-            if (!(anotherObj instanceof ComplexKey))
-                return false;
+            if (!(anotherObj instanceof ComplexKey)) return false;
             ComplexKey another = (ComplexKey) anotherObj;
             return key1.equals(another.key1) && key2.equals(another.key2);
         }
@@ -320,8 +309,7 @@ public class Kit {
         }
     }
 
-    public static byte[] readStream(InputStream is, int initialBufferCapacity)
-            throws IOException {
+    public static byte[] readStream(InputStream is, int initialBufferCapacity) throws IOException {
         if (initialBufferCapacity <= 0) {
             throw new IllegalArgumentException(
                     "Bad initialBufferCapacity: " + initialBufferCapacity);
@@ -335,9 +323,20 @@ public class Kit {
             }
             cursor += n;
             if (cursor == buffer.length) {
+                int readahead = -1;
+                if (cursor == initialBufferCapacity) {
+                    readahead = is.read();
+                    if (readahead < 0) { // Check for EOS
+                        return buffer;
+                    }
+                }
                 byte[] tmp = new byte[buffer.length * 2];
                 System.arraycopy(buffer, 0, tmp, 0, cursor);
                 buffer = tmp;
+                if (readahead != -1) {
+                    buffer[cursor++] = (byte) readahead;
+                    readahead = -1;
+                }
             }
         }
         if (cursor != buffer.length) {
@@ -349,13 +348,11 @@ public class Kit {
     }
 
     /**
-     * Throws RuntimeException to indicate failed assertion.
-     * The function never returns and its return type is RuntimeException
-     * only to be able to write <code>throw Kit.codeBug()</code> if plain
-     * <code>Kit.codeBug()</code> triggers unreachable code error.
+     * Throws RuntimeException to indicate failed assertion. The function never returns and its
+     * return type is RuntimeException only to be able to write <code>throw Kit.codeBug()</code> if
+     * plain <code>Kit.codeBug()</code> triggers unreachable code error.
      */
-    public static RuntimeException codeBug()
-            throws RuntimeException {
+    public static RuntimeException codeBug() throws RuntimeException {
         RuntimeException ex = new IllegalStateException("FAILED ASSERTION");
         // Print stack trace ASAP
         ex.printStackTrace(System.err);
@@ -363,13 +360,11 @@ public class Kit {
     }
 
     /**
-     * Throws RuntimeException to indicate failed assertion.
-     * The function never returns and its return type is RuntimeException
-     * only to be able to write <code>throw Kit.codeBug()</code> if plain
-     * <code>Kit.codeBug()</code> triggers unreachable code error.
+     * Throws RuntimeException to indicate failed assertion. The function never returns and its
+     * return type is RuntimeException only to be able to write <code>throw Kit.codeBug()</code> if
+     * plain <code>Kit.codeBug()</code> triggers unreachable code error.
      */
-    public static RuntimeException codeBug(String msg)
-            throws RuntimeException {
+    public static RuntimeException codeBug(String msg) throws RuntimeException {
         msg = "FAILED ASSERTION: " + msg;
         RuntimeException ex = new IllegalStateException(msg);
         // Print stack trace ASAP

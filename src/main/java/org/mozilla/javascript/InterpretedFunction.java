@@ -15,8 +15,7 @@ final class InterpretedFunction extends NativeFunction implements Script {
     SecurityController securityController;
     Object securityDomain;
 
-    private InterpretedFunction(InterpreterData idata,
-                                Object staticSecurityDomain) {
+    private InterpretedFunction(InterpreterData idata, Object staticSecurityDomain) {
         this.idata = idata;
 
         // Always get Context from the current thread to
@@ -44,39 +43,26 @@ final class InterpretedFunction extends NativeFunction implements Script {
         this.securityDomain = parent.securityDomain;
     }
 
-    /**
-     * Create script from compiled bytecode.
-     */
-    static InterpretedFunction createScript(InterpreterData idata,
-                                            Object staticSecurityDomain) {
-        InterpretedFunction f;
-        f = new InterpretedFunction(idata, staticSecurityDomain);
+    /** Create script from compiled bytecode. */
+    static InterpretedFunction createScript(InterpreterData idata, Object staticSecurityDomain) {
+        return new InterpretedFunction(idata, staticSecurityDomain);
+    }
+
+    /** Create function compiled from Function(...) constructor. */
+    static InterpretedFunction createFunction(
+            Context cx, Scriptable scope, InterpreterData idata, Object staticSecurityDomain) {
+        InterpretedFunction f = new InterpretedFunction(idata, staticSecurityDomain);
+        f.initScriptFunction(cx, scope, f.idata.isES6Generator);
         return f;
     }
 
-    /**
-     * Create function compiled from Function(...) constructor.
-     */
-    static InterpretedFunction createFunction(Context cx, Scriptable scope,
-                                              InterpreterData idata,
-                                              Object staticSecurityDomain) {
-        InterpretedFunction f;
-        f = new InterpretedFunction(idata, staticSecurityDomain);
-        f.initScriptFunction(cx, scope);
-        return f;
-    }
-
-    /**
-     * Create function embedded in script or another function.
-     */
-    static InterpretedFunction createFunction(Context cx, Scriptable scope,
-                                              InterpretedFunction parent,
-                                              int index) {
+    /** Create function embedded in script or another function. */
+    static InterpretedFunction createFunction(
+            Context cx, Scriptable scope, InterpretedFunction parent, int index) {
         InterpretedFunction f = new InterpretedFunction(parent, index);
-        f.initScriptFunction(cx, scope);
+        f.initScriptFunction(cx, scope, f.idata.isES6Generator);
         return f;
     }
-
 
     @Override
     public String getFunctionName() {
@@ -86,16 +72,15 @@ final class InterpretedFunction extends NativeFunction implements Script {
     /**
      * Calls the function.
      *
-     * @param cx      the current context
-     * @param scope   the scope used for the call
+     * @param cx the current context
+     * @param scope the scope used for the call
      * @param thisObj the value of "this"
-     * @param args    function arguments. Must not be null. You can use
-     *                {@link ScriptRuntime#emptyArgs} to pass empty arguments.
+     * @param args function arguments. Must not be null. You can use {@link ScriptRuntime#emptyArgs}
+     *     to pass empty arguments.
      * @return the result of the function call.
      */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
-                       Object[] args) {
+    public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if (!ScriptRuntime.hasTopCall(cx)) {
             return ScriptRuntime.doTopCall(this, cx, scope, thisObj, args, idata.isStrict);
         }
@@ -108,13 +93,17 @@ final class InterpretedFunction extends NativeFunction implements Script {
             // Can only be applied to scripts
             throw new IllegalStateException();
         }
+        Object ret;
         if (!ScriptRuntime.hasTopCall(cx)) {
             // It will go through "call" path. but they are equivalent
-            return ScriptRuntime.doTopCall(
-                    this, cx, scope, scope, ScriptRuntime.emptyArgs, idata.isStrict);
+            ret =
+                    ScriptRuntime.doTopCall(
+                            this, cx, scope, scope, ScriptRuntime.emptyArgs, idata.isStrict);
+        } else {
+            ret = Interpreter.interpret(this, cx, scope, scope, ScriptRuntime.emptyArgs);
         }
-        return Interpreter.interpret(
-                this, cx, scope, scope, ScriptRuntime.emptyArgs);
+        cx.processMicrotasks();
+        return ret;
     }
 
     public boolean isScript() {
@@ -132,8 +121,8 @@ final class InterpretedFunction extends NativeFunction implements Script {
     }
 
     @Override
-    public Object resumeGenerator(Context cx, Scriptable scope, int operation,
-                                  Object state, Object value) {
+    public Object resumeGenerator(
+            Context cx, Scriptable scope, int operation, Object state, Object value) {
         return Interpreter.resumeGenerator(cx, scope, operation, state, value);
     }
 
@@ -144,6 +133,9 @@ final class InterpretedFunction extends NativeFunction implements Script {
 
     @Override
     protected int getParamCount() {
+        if (idata.argsHasRest) {
+            return idata.argCount - 1;
+        }
         return idata.argCount;
     }
 
@@ -162,11 +154,6 @@ final class InterpretedFunction extends NativeFunction implements Script {
         return idata.argIsConst[index];
     }
 
-    @Override
-    protected boolean isVarLexical(int index) {
-        return false;
-    }
-
     boolean hasFunctionNamed(String name) {
         for (int f = 0; f < idata.getFunctionCount(); f++) {
             InterpreterData functionData = (InterpreterData) idata.getFunction(f);
@@ -177,5 +164,9 @@ final class InterpretedFunction extends NativeFunction implements Script {
         }
         return true;
     }
-}
 
+    @Override
+    public boolean hasDefaultParameters() {
+        return idata.argsHasDefaults;
+    }
+}

@@ -6,28 +6,28 @@
 
 package org.mozilla.javascript;
 
-/**
- * The class for  Arrow Function Definitions
- * EcmaScript 6 Rev 14, March 8, 2013 Draft spec , 13.2
- */
+/** The class for Arrow Function Definitions EcmaScript 6 Rev 14, March 8, 2013 Draft spec , 13.2 */
 public class ArrowFunction extends BaseFunction {
+
     private static final long serialVersionUID = -7377989503697220633L;
 
     protected final Callable targetFunction;
     protected final Scriptable boundThis;
 
-    public ArrowFunction(Context cx, Scriptable scope, Callable targetFunction, Scriptable boundThis) {
+    public ArrowFunction(
+            Context cx, Scriptable scope, Callable targetFunction, Scriptable boundThis) {
         this.targetFunction = targetFunction;
         this.boundThis = boundThis;
 
-        ScriptRuntime.setFunctionProtoAndParent(this, scope);
+        ScriptRuntime.setFunctionProtoAndParent(this, cx, scope, false);
 
         Function thrower = ScriptRuntime.typeErrorThrower(cx);
         NativeObject throwing = new NativeObject();
+        ScriptRuntime.setBuiltinProtoAndParent(throwing, scope, TopLevel.Builtins.Object);
         throwing.put("get", throwing, thrower);
         throwing.put("set", throwing, thrower);
-        throwing.put("enumerable", throwing, false);
-        throwing.put("configurable", throwing, false);
+        throwing.put("enumerable", throwing, Boolean.FALSE);
+        throwing.put("configurable", throwing, Boolean.FALSE);
         throwing.preventExtensions();
 
         this.defineOwnProperty(cx, "caller", throwing, false);
@@ -42,12 +42,7 @@ public class ArrowFunction extends BaseFunction {
 
     @Override
     public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
-        throw ScriptRuntime.typeError1("msg.not.ctor", decompile(0, 0));
-    }
-
-    @Override
-    public boolean isConstructable() {
-        return false;
+        throw ScriptRuntime.typeErrorById("msg.not.ctor", decompile(0, 0));
     }
 
     @Override
@@ -55,7 +50,7 @@ public class ArrowFunction extends BaseFunction {
         if (targetFunction instanceof Function) {
             return ((Function) targetFunction).hasInstance(instance);
         }
-        throw ScriptRuntime.typeError0("msg.not.ctor");
+        throw ScriptRuntime.typeErrorById("msg.not.ctor");
     }
 
     @Override
@@ -79,11 +74,8 @@ public class ArrowFunction extends BaseFunction {
         return super.decompile(indent, flags);
     }
 
-    public Callable getTargetFunction() {
-        return targetFunction;
-    }
-
     static boolean equalObjectGraphs(ArrowFunction f1, ArrowFunction f2, EqualObjectGraphs eq) {
-        return eq.equalGraphs(f1.boundThis, f2.boundThis) && eq.equalGraphs(f1.targetFunction, f2.targetFunction);
+        return eq.equalGraphs(f1.boundThis, f2.boundThis)
+                && eq.equalGraphs(f1.targetFunction, f2.targetFunction);
     }
 }

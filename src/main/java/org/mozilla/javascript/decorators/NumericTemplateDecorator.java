@@ -5,7 +5,7 @@ import org.mozilla.javascript.*;
 public class NumericTemplateDecorator extends Decorator {
     public static void init(Scriptable scope) {
         NumericTemplateDecorator numericTemplate = new NumericTemplateDecorator();
-        ScriptableObject.defineProperty(scope, "@numericTemplate", numericTemplate, ScriptableObject.NOT_ENUMERABLE);
+        ScriptableObject.defineProperty(scope, "@numericTemplate", numericTemplate, ScriptableObject.DONTENUM);
     }
 
     @Override

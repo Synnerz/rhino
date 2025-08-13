@@ -67,6 +67,16 @@ public class NativeGeneratorIterator extends ES6Iterator {
     }
 
     @Override
+    public void declare(String name, Scriptable start) {
+
+    }
+
+    @Override
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    @Override
     protected String getTag() {
         return GEN_ITERATOR_TAG;
     }

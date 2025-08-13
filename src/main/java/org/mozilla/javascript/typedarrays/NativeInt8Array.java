@@ -6,20 +6,22 @@
 
 package org.mozilla.javascript.typedarrays;
 
-import org.mozilla.javascript.*;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.IdFunctionObject;
+import org.mozilla.javascript.ScriptRuntimeES6;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.Undefined;
 
 /**
  * An array view that stores 8-bit quantities and implements the JavaScript "Int8Array" interface.
  * It also implements List&lt;Byte&gt; for direct manipulation in Java.
  */
-
 public class NativeInt8Array extends NativeTypedArrayView<Byte> {
     private static final long serialVersionUID = -3349419704390398895L;
 
     private static final String CLASS_NAME = "Int8Array";
 
-    public NativeInt8Array() {
-    }
+    public NativeInt8Array() {}
 
     public NativeInt8Array(NativeArrayBuffer ab, int off, int len) {
         super(ab, off, len, len);
@@ -34,14 +36,20 @@ public class NativeInt8Array extends NativeTypedArrayView<Byte> {
         return CLASS_NAME;
     }
 
-    public static void init(Context cx, Scriptable scope, boolean sealed) {
-        NativeInt8Array a = new NativeInt8Array();
-        a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+    @Override
+    public void declare(String name, Scriptable start) {
+
     }
 
     @Override
-    protected void fillConstructorProperties(IdFunctionObject ctor) {
-        addCtorSpecies(ctor);
+    public void declareConst(String name, Scriptable start) {
+
+    }
+
+    public static void init(Context cx, Scriptable scope, boolean sealed) {
+        NativeInt8Array a = new NativeInt8Array();
+        IdFunctionObject constructor = a.exportAsJSClass(MAX_PROTOTYPE_ID, scope, sealed);
+        ScriptRuntimeES6.addSymbolSpecies(cx, scope, constructor);
     }
 
     @Override
@@ -56,11 +64,7 @@ public class NativeInt8Array extends NativeTypedArrayView<Byte> {
 
     @Override
     protected NativeInt8Array realThis(Scriptable thisObj, IdFunctionObject f) {
-        Scriptable unwrappedThis = ScriptRuntime.unwrapProxy(thisObj);
-        if (!(unwrappedThis instanceof NativeInt8Array)) {
-            throw incompatibleCallError(f);
-        }
-        return (NativeInt8Array) unwrappedThis;
+        return ensureType(thisObj, NativeInt8Array.class, f);
     }
 
     @Override
