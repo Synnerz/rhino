@@ -493,7 +493,7 @@ public class Main
                                         source.trim().startsWith("function")))
                         {
                             try {
-//                                console.println(ScriptRuntime.toStringPretty(result));
+                                console.println(ScriptRuntime.toStringPretty(result));
                             } catch (RhinoException rex) {
                                 ToolErrorReporter.reportException(
                                         cx.getErrorReporter(), rex);
