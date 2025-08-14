@@ -1172,7 +1172,32 @@ public final class IRFactory {
     }
 
     private Node transformString(StringLiteral node) {
+        boolean spread = node.getProp(Node.SPREAD_PROP) != null;
+
+        if (spread) {
+            decompiler.addToken(Token.SPREAD);
+        }
+
         decompiler.addString(node.getValue());
+
+        if (spread) {
+            Node array = new Node(Token.ARRAYLIT);
+            array.putProp(Node.SPREAD_PROP, true);
+
+            String str = node.getValue();
+            int index = 0;
+            while (index < str.length()) {
+                int newIndex = str.offsetByCodePoints(index, 1);
+                String value = str.substring(index, newIndex);
+                index = newIndex;
+
+                StringLiteral sl = new StringLiteral();
+                sl.setValue(value);
+                array.addChildToBack(transformString(sl));
+            }
+            return array;
+        }
+
         return Node.newString(node.getValue());
     }
 
