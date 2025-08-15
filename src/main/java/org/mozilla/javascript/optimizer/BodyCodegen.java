@@ -2583,6 +2583,17 @@ public class BodyCodegen {
                         + "Lorg/mozilla/javascript/Context;"
                         + "Lorg/mozilla/javascript/Scriptable;"
                         + ")Lorg/mozilla/javascript/Scriptable;");
+
+        Object spreadProp = node.getProp(Node.SPREAD_IDS_PROP);
+        if (spreadProp != null) {
+            Object[] spread = (Object[]) spreadProp;
+
+            for (Object obj : spread) {
+                cfw.add(ByteCode.DUP);
+                generateExpression((Node) obj, node);
+                addScriptRuntimeInvoke("addSpreadObject", VOID, SCRIPTABLE, SCRIPTABLE);
+            }
+        }
     }
 
     private void visitSpecialCall(Node node, int type, int specialType, Node child) {

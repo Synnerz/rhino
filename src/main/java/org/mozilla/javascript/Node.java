@@ -69,7 +69,9 @@ public class Node implements Iterable<Node> {
             SUPER_PROP = 33,
             EXPORT_PROP = 34,
             SPREAD_PROP = 35,
-            LAST_PROP = SPREAD_PROP;
+            COMPUTED_PROP = 36,
+            SPREAD_IDS_PROP = 37,
+            LAST_PROP = SPREAD_IDS_PROP;
 
     // values of ISNUMBER_PROP to specify
     // which of the children are Number types
@@ -446,6 +448,10 @@ public class Node implements Iterable<Node> {
                     return "export_prop";
                 case SPREAD_PROP:
                     return "spread_prop";
+                case SPREAD_IDS_PROP:
+                    return "spread_ids";
+                case COMPUTED_PROP:
+                    return "computed_prop";
 
                 default:
                     Kit.codeBug();
@@ -498,6 +504,11 @@ public class Node implements Iterable<Node> {
             return null;
         }
         return item.objectValue;
+    }
+
+    public Object getProp(int propType, Object defaultValue) {
+        PropListItem item = lookupProperty(propType);
+        return item == null ? defaultValue : item.objectValue;
     }
 
     public int getIntProp(int propType, int defaultValue) {

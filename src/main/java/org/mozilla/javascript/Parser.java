@@ -3308,6 +3308,13 @@ public class Parser {
         int tt = peekToken(), lineno = ts.lineno;
         AstNode pn;
 
+        boolean spread = false;
+        if (tt == Token.DOTDOTDOT) {
+            spread = true;
+            consumeToken();
+            tt = peekToken();
+        }
+
         if (tt != Token.NEW) {
             pn = primaryExpr();
         } else {
@@ -3361,6 +3368,13 @@ public class Parser {
         }
         pn.setLineno(lineno);
         AstNode tail = pn instanceof ClassNode ? pn : memberExprTail(allowCallSyntax, pn);
+
+        if (spread) {
+            if (tail == null) throw Kit.codeBug();
+
+            tail.putProp(Node.SPREAD_PROP, true);
+        }
+
         return tail;
     }
 
@@ -3738,16 +3752,16 @@ public class Parser {
         int ttFlagged = peekFlaggedToken();
         int tt = ttFlagged & CLEAR_TI_MASK;
 
-        boolean spread = false;
-        if (tt == Token.DOTDOTDOT) {
-            spread = true;
-            consumeToken();
-            tt = nextToken();
-
-            if (!(tt == Token.LB || tt == Token.STRING || tt == Token.NAME)) { // TODO: Token.LC
-                reportError("msg.not.iterable", ts.getString());
-            }
-        }
+//        boolean spread = false;
+//        if (tt == Token.DOTDOTDOT) {
+//            spread = true;
+//            consumeToken();
+//            tt = nextToken();
+//
+//            if (!(tt == Token.LB || tt == Token.STRING || tt == Token.NAME)) { // TODO: Token.LC
+//                reportError("msg.not.iterable", ts.getString());
+//            }
+//        }
 
         AstNode pn = null;
 
@@ -3860,11 +3874,11 @@ public class Parser {
                 break;
         }
 
-        if (spread) {
-            if (pn == null) throw Kit.codeBug();
-
-            pn.putProp(Node.SPREAD_PROP, true);
-        }
+//        if (spread) {
+//            if (pn == null) throw Kit.codeBug();
+//
+//            pn.putProp(Node.SPREAD_PROP, true);
+//        }
         return pn;
 
         // should only be reachable in IDE/error-recovery mode
@@ -4339,6 +4353,14 @@ public class Parser {
                 pname = createNumericLiteral(tt, true);
                 break;
 
+            case Token.DOTDOTDOT:
+                consumeToken();
+                mustMatchToken(Token.NAME, "msg.obj.spread.bad.ident", true);
+                pname = createNameNode();
+                consumeToken();
+                pname.putProp(Node.SPREAD_PROP, true);
+                break;
+
             default:
                 if (compilerEnv.isReservedKeywordAsIdentifier()
                         && TokenStream.isKeyword(
@@ -4359,6 +4381,19 @@ public class Parser {
         // Support, e.g., |var {x, y} = o| as destructuring shorthand
         // for |var {x: x, y: y} = o|, as implemented in spidermonkey JS 1.8.
         int tt = peekToken();
+
+        if (ptt == Token.DOTDOTDOT) {
+            if (tt != Token.COMMA && tt != Token.RC) {
+                reportError("msg.obj.spread.extra");
+            }
+
+            AstNode nn = new Name(property.getPosition(), property.getString());
+            ObjectProperty pn = new ObjectProperty();
+
+            pn.setLeftAndRight(property, nn);
+            return pn;
+        }
+
         if ((tt == Token.COMMA || tt == Token.RC)
                 && ptt == Token.NAME
                 && compilerEnv.getLanguageVersion() >= Context.VERSION_1_8) {

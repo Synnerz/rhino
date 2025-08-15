@@ -712,6 +712,11 @@ public final class IRFactory {
     private Node transformFunctionCall(FunctionCall node) {
         Node call = createCallOrNew(Token.CALL, transform(node.getTarget()));
         call.setLineno(node.getLineno());
+
+        if (node.getProp(Node.SPREAD_PROP) != null) {
+            call.putProp(Node.SPREAD_PROP, node.getProp(Node.SPREAD_PROP));
+        }
+
         decompiler.addToken(Token.LP);
         List<AstNode> args = node.getArguments();
         for (int i = 0; i < args.size(); i++) {
@@ -1015,7 +1020,8 @@ public final class IRFactory {
         // creation plus object property entries, so later compiler
         // stages don't need to know about object literals.
         decompiler.addToken(Token.LC);
-        List<ObjectProperty> elems = node.getElements();
+        List<ObjectProperty> elems = node.getElements().stream().filter((it) -> it.getLeft().getProp(Node.SPREAD_PROP) == null).collect(Collectors.toList());;
+        List<ObjectProperty> spread = node.getElements().stream().filter((it) -> it.getLeft().getProp(Node.SPREAD_PROP) != null).collect(Collectors.toList());
         Node object = new Node(Token.OBJECTLIT);
         Object[] properties;
         if (elems.isEmpty()) {
@@ -1055,6 +1061,16 @@ public final class IRFactory {
                 }
             }
         }
+
+        if (!spread.isEmpty()) {
+            Object[] spreadProps = new Object[spread.size()];
+            int i = 0;
+            for (ObjectProperty prop : spread) {
+                spreadProps[i++] = getPropKey(prop.getLeft());
+            }
+            object.putProp(Node.SPREAD_IDS_PROP, spreadProps);
+        }
+
         decompiler.addToken(Token.RC);
         object.putProp(Node.OBJECT_IDS_PROP, properties);
         return object;
