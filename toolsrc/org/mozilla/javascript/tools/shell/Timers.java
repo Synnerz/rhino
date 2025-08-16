@@ -14,6 +14,7 @@ public class Timers {
     private int lastId = 0;
     private final HashMap<Integer, Timeout> timers = new HashMap<>();
     private final PriorityQueue<Timeout> timerQueue = new PriorityQueue<>();
+    private final Object lock = new Object();
 
     /**
      * Initialize the "setTimeout" and "clearTimeout" functions on the specified scope.
@@ -67,17 +68,27 @@ public class Timers {
      * @throws InterruptedException if the thread was interrupted
      */
     private boolean executeNext(Context cx, Scriptable scope) throws InterruptedException {
-        Timeout t = timerQueue.peek();
-        if (t == null) {
-            return false;
+        Timeout t;
+        synchronized (lock) {
+            t = timerQueue.peek();
+            if (t == null) {
+                return false;
+            }
         }
+
         long remaining = t.expiration - System.currentTimeMillis();
         if (remaining > 0) {
             Thread.sleep(remaining);
         }
-        if (!timerQueue.contains(t)) return false;
-        timerQueue.remove();
-        timers.remove(t.id);
+
+        synchronized (lock) {
+            if (timerQueue.peek() != t) {
+                return !timerQueue.isEmpty();
+            }
+            timerQueue.remove();
+            timers.remove(t.id);
+        }
+
         cx.enqueueMicrotask(() -> t.func.call(cx, scope, scope, t.funcArgs));
         return true;
     }
@@ -90,23 +101,24 @@ public class Timers {
             throw ScriptRuntime.typeError("Expected first argument to be a function");
         }
 
-        int id = ++lastId;
         Timeout t = new Timeout();
-        t.id = id;
-        t.func = (Function) args[0];
-        int delay = 0;
-        if (args.length > 1) {
-            delay = ScriptRuntime.toInt32(args[1]);
-        }
-        t.expiration = System.currentTimeMillis() + delay;
-        if (args.length > 2) {
-            t.funcArgs = new Object[args.length - 2];
-            System.arraycopy(args, 2, t.funcArgs, 0, t.funcArgs.length);
-        }
+        synchronized (lock) {
+            t.id = ++lastId;
+            t.func = (Function) args[0];
+            int delay = 0;
+            if (args.length > 1) {
+                delay = ScriptRuntime.toInt32(args[1]);
+            }
+            t.expiration = System.currentTimeMillis() + delay;
+            if (args.length > 2) {
+                t.funcArgs = new Object[args.length - 2];
+                System.arraycopy(args, 2, t.funcArgs, 0, t.funcArgs.length);
+            }
 
-        timers.put(id, t);
-        timerQueue.add(t);
-        return id;
+            timers.put(t.id, t);
+            timerQueue.add(t);
+        }
+        return t.id;
     }
 
     private Object clearTimeout(Object[] args) {
@@ -114,9 +126,12 @@ public class Timers {
             throw ScriptRuntime.typeError("Expected function parameter");
         }
         int id = ScriptRuntime.toInt32(args[0]);
-        Timeout t = timers.remove(id);
-        if (t != null) {
-            timerQueue.remove(t);
+        Timeout t;
+        synchronized (lock) {
+            t = timers.remove(id);
+            if (t != null) {
+                timerQueue.remove(t);
+            }
         }
         return Undefined.instance;
     }
@@ -139,18 +154,14 @@ public class Timers {
 
         @Override
         public boolean equals(Object obj) {
-            try {
-                return expiration == ((Timeout) obj).expiration;
-            } catch (ClassCastException cce) {
-                return false;
-            }
+            if (this == obj) return true;
+            if (!(obj instanceof Timeout)) return false;
+            return id == ((Timeout) obj).id;
         }
 
         @Override
         public int hashCode() {
-            // This private class should never go in a HashMap.
-            assert false;
-            return (int) expiration;
+            return id;
         }
     }
 }
