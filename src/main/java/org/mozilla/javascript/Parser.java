@@ -1256,6 +1256,11 @@ public class Parser {
             Map<String, Node> destructuring,
             Map<String, AstNode> destructuringDefault,
             Set<String> paramNames) {
+        // Since arrow functions don't support rest params per "default"
+        // we make a small little hacky trick here and manually define it ourselves
+        if (params.getProp(Node.SPREAD_PROP) == Boolean.TRUE)
+            fnNode.setHasRestParameter(true);
+
         if (params instanceof ArrayLiteral || params instanceof ObjectLiteral) {
             markDestructuring(params);
             fnNode.addParam(params);

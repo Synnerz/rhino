@@ -780,10 +780,6 @@ public class Decompiler {
                     result.append("..");
                     break;
 
-                case Token.SPREAD:
-                    result.append("...");
-                    break;
-
                 case Token.DOTQUERY:
                     result.append(".(");
                     break;

@@ -419,7 +419,7 @@ public final class IRFactory {
             if (i < elems.size() - 1) decompiler.addToken(Token.COMMA);
         }
         if (node.getProp(Node.SPREAD_PROP) != null) {
-            decompiler.addToken(Token.SPREAD);
+            decompiler.addToken(Token.DOTDOTDOT);
             array.putProp(Node.SPREAD_PROP, true);
         }
         decompiler.addToken(Token.RB);
@@ -1191,7 +1191,7 @@ public final class IRFactory {
         boolean spread = node.getProp(Node.SPREAD_PROP) != null;
 
         if (spread) {
-            decompiler.addToken(Token.SPREAD);
+            decompiler.addToken(Token.DOTDOTDOT);
         }
 
         decompiler.addString(node.getValue());

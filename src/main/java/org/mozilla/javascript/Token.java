@@ -236,8 +236,7 @@ public class Token {
             EXPORT_VALUE = NAMESPACE_IMPORT_EXPORT + 1,
             NULLISH_COALESCING = EXPORT_VALUE + 1,
             QUESTION_DOT = NULLISH_COALESCING + 1,
-            SPREAD = QUESTION_DOT + 1,
-            LAST_TOKEN = SPREAD;
+            LAST_TOKEN = QUESTION_DOT;
 
     /**
      * Returns a name for the token. If Rhino is compiled with certain hardcoded debugging flags in
@@ -626,10 +625,8 @@ public class Token {
                 return "STATIC";
             case EXTENDS:
                 return "EXTENDS";
-//            case SUPER:
-//                return "SUPER";
-            case SPREAD:
-                return "SPREAD";
+            case DOTDOTDOT:
+                return "DOTDOTDOT";
         }
 
         // Token without name
