@@ -778,17 +778,16 @@ class JavaMembers {
             Scriptable scope, Class<?> dynamicType, Class<?> staticType, boolean includeProtected) {
         JavaMembers members;
         ClassCache cache = ClassCache.get(scope);
-        Map<ClassCache.CacheKey, JavaMembers> ct = cache.getClassCacheMap();
+        Map<Class<?>, JavaMembers> ct = cache.getClassCacheMap();
 
         Class<?> cl = dynamicType;
-        Object secCtx = getSecurityContext();
         for (; ; ) {
-            members = ct.get(new ClassCache.CacheKey(cl, secCtx));
+            members = ct.get(cl);
             if (members != null) {
                 if (cl != dynamicType) {
                     // member lookup for the original class failed because of
                     // missing privileges, cache the result so we don't try again
-                    ct.put(new ClassCache.CacheKey(dynamicType, secCtx), members);
+                    ct.put(dynamicType, members);
                 }
                 return members;
             }
@@ -819,11 +818,11 @@ class JavaMembers {
         }
 
         if (cache.isCachingEnabled()) {
-            ct.put(new ClassCache.CacheKey(cl, secCtx), members);
+            ct.put(cl, members);
             if (cl != dynamicType) {
                 // member lookup for the original class failed because of
                 // missing privileges, cache the result so we don't try again
-                ct.put(new ClassCache.CacheKey(dynamicType, secCtx), members);
+                ct.put(dynamicType, members);
             }
         }
         return members;
