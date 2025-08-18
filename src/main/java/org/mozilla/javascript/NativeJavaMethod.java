@@ -222,6 +222,9 @@ public class NativeJavaMethod extends BaseFunction {
                             + staticType);
         }
 
+        // Avoid wrapping the value if the return type is void.
+        if (staticType == Void.TYPE) return Undefined.instance;
+
         Object wrapped =
                 cx.getWrapFactory()
                         .wrap(
