@@ -155,7 +155,7 @@ public abstract class ScriptableObject
     }
 
     static void checkValidAttributes(int attributes) {
-        final int mask = READONLY | DONTENUM | PERMANENT | UNINITIALIZED_CONST;
+        final int mask = READONLY | DONTENUM | PERMANENT | UNINITIALIZED_CONST | INITIALIZED_CONST;
         if ((attributes & ~mask) != 0) {
             throw new IllegalArgumentException(String.valueOf(attributes));
         }
