@@ -4977,6 +4977,7 @@ public class Parser {
         boolean empty = true;
         int setOp = variableType == Token.CONST ? Token.SETCONST : Token.SETNAME;
         boolean defaultValuesSetup = false;
+        List<Object> alreadyTaken = new ArrayList<>();
 
         for (ObjectProperty prop : node.getElements()) {
             int lineno = 0;
@@ -4989,14 +4990,21 @@ public class Parser {
             AstNode id = prop.getLeft();
 
             Node rightElem = null;
-            if (id instanceof Name) {
+            if (id.getProp(Node.SPREAD_PROP) != null) {
+                Node s = Node.newString(((Name) id).getIdentifier());
+                rightElem = new Node(Token.DOTDOTDOT, createName(tempName), s);
+                rightElem.putProp(Node.SPREAD_IDS_PROP, alreadyTaken.toArray());
+            } else if (id instanceof Name) {
                 Node s = Node.newString(((Name) id).getIdentifier());
                 rightElem = new Node(Token.GETPROP, createName(tempName), s);
+                alreadyTaken.add(((Name) id).getIdentifier());
             } else if (id instanceof StringLiteral) {
                 Node s = Node.newString(((StringLiteral) id).getValue());
+                alreadyTaken.add(((StringLiteral) id).getValue());
                 rightElem = new Node(Token.GETPROP, createName(tempName), s);
             } else if (id instanceof NumberLiteral) {
                 Node s = createNumber((int) ((NumberLiteral) id).getNumber());
+                alreadyTaken.add((int) ((NumberLiteral) id).getNumber());
                 rightElem = new Node(Token.GETELEM, createName(tempName), s);
             } else {
                 throw codeBug();

@@ -12,10 +12,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.text.MessageFormat;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.function.BiConsumer;
 import org.mozilla.javascript.ast.FunctionNode;
 import org.mozilla.javascript.v8dtoa.DoubleConversion;
@@ -1842,6 +1839,26 @@ public class ScriptRuntime {
         }
 
         return targetArgs;
+    }
+
+    public static Object handleObjectRest(Object destructured, Object[] alreadyTaken) {
+        ScriptableObject obj = ScriptableObject.ensureScriptableObject(destructured);
+
+        Object[] ids = obj.getIds();
+        List<Object> taken = Arrays.asList(alreadyTaken);
+        NativeObject newObj = new NativeObject();
+
+        for (Object id : ids) {
+            if (taken.contains(id)) continue;
+
+            if (id instanceof String) {
+                ScriptableObject.putProperty(newObj, (String) id, ScriptableObject.getProperty(obj, id));
+            } else if (id instanceof Integer) {
+                ScriptableObject.putProperty(newObj, (int) id, ScriptableObject.getProperty(obj, id));
+            }
+        }
+
+        return newObj;
     }
 
     public static Object searchDefaultNamespace(Context cx) {

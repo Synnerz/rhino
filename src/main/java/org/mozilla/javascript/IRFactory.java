@@ -7,6 +7,7 @@
 package org.mozilla.javascript;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -1066,7 +1067,7 @@ public final class IRFactory {
             Object[] spreadProps = new Object[spread.size()];
             int i = 0;
             for (ObjectProperty prop : spread) {
-                spreadProps[i++] = getPropKey(prop.getLeft());
+                spreadProps[i++] = igetPropKey(prop.getLeft());
             }
             object.putProp(Node.SPREAD_IDS_PROP, spreadProps);
         }
@@ -1074,6 +1075,37 @@ public final class IRFactory {
         decompiler.addToken(Token.RC);
         object.putProp(Node.OBJECT_IDS_PROP, properties);
         return object;
+    }
+
+    private Object igetPropKey(Node id) {
+        Object key;
+
+        if (id.getProp(Node.COMPUTED_PROP) != null) {
+            key = transform((AstNode) id);
+            decompiler.addToken(Token.LB);
+            decompile((AstNode) id);
+            decompiler.addToken(Token.RB);
+        } else if (id instanceof Name) {
+            if (id.getProp(Node.SPREAD_PROP) != null) {
+                decompiler.addToken(Token.DOTDOTDOT);
+                key = id;
+            } else {
+                String s = ((Name) id).getIdentifier();
+                decompiler.addName(s);
+                key = ScriptRuntime.getIndexObject(s);
+            }
+        } else if (id instanceof StringLiteral) {
+            String s = ((StringLiteral) id).getValue();
+            decompiler.addString(s);
+            key = ScriptRuntime.getIndexObject(s);
+        } else if (id instanceof NumberLiteral) {
+            double n = ((NumberLiteral) id).getNumber();
+            decompiler.addNumber(n);
+            key = ScriptRuntime.getIndexObject(n);
+        } else {
+            throw Kit.codeBug();
+        }
+        return key;
     }
 
     private Node transformParenExpr(ParenthesizedExpression node) {
