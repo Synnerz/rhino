@@ -24,6 +24,14 @@ public final class OptRuntime extends ScriptRuntime {
     public static final Double oneObj = Double.valueOf(1.0);
     public static final Double minusOneObj = Double.valueOf(-1.0);
 
+    public static final LRUCache lruCache = new LRUCache(10);
+
+    public static final class LookupCache {
+        volatile Callable target;
+        volatile Scriptable thisObj;
+        volatile Scriptable scope;
+    }
+
     /** Implement ....() call shrinking optimizer code. */
     public static Object call0(Callable fun, Scriptable thisObj, Context cx, Scriptable scope) {
         return fun.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
@@ -71,8 +79,25 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement name(args) call shrinking optimizer code. */
     public static Object callName(Object[] args, String name, Context cx, Scriptable scope) {
+        LookupCache cached = lruCache.get(name.hashCode());
+        // TODO: look into why caching imports breaks the entire program
+        boolean forceCache = !name.equals("require");
+        if (cached != null) {
+            return cached.target.call(cx, scope, cached.thisObj, args);
+        }
+
         Callable f = getNameFunctionAndThis(name, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
+
+        if (forceCache) {
+            LookupCache toCache = new LookupCache();
+            toCache.target = f;
+            toCache.scope = scope;
+            toCache.thisObj = thisObj;
+
+            lruCache.put(name.hashCode(), toCache);
+        }
+
         return f.call(cx, scope, thisObj, args);
     }
 
