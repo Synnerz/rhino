@@ -24,9 +24,9 @@ public final class OptRuntime extends ScriptRuntime {
     public static final Double oneObj = Double.valueOf(1.0);
     public static final Double minusOneObj = Double.valueOf(-1.0);
 
-    public static final LRUCache lruCache = new LRUCache(10);
+    public static final LRUCache lruCache = new LRUCache(64);
 
-    public static final class LookupCache {
+    public static final class NameIC {
         volatile Callable target;
         volatile Scriptable thisObj;
         volatile Scriptable scope;
@@ -79,7 +79,7 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement name(args) call shrinking optimizer code. */
     public static Object callName(Object[] args, String name, Context cx, Scriptable scope) {
-        LookupCache cached = lruCache.get(name.hashCode());
+        NameIC cached = lruCache.get(name.hashCode());
         // TODO: look into why caching imports breaks the entire program
         boolean forceCache = !name.equals("require");
         if (cached != null) {
@@ -90,7 +90,7 @@ public final class OptRuntime extends ScriptRuntime {
         Scriptable thisObj = lastStoredScriptable(cx);
 
         if (forceCache) {
-            LookupCache toCache = new LookupCache();
+            NameIC toCache = new NameIC();
             toCache.target = f;
             toCache.scope = scope;
             toCache.thisObj = thisObj;
@@ -103,8 +103,24 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement name() call shrinking optimizer code. */
     public static Object callName0(String name, Context cx, Scriptable scope) {
+        NameIC cached = lruCache.get(name.hashCode());
+        boolean forceCache = !name.equals("require");
+        if (cached != null) {
+            return cached.target.call(cx, scope, cached.thisObj, ScriptRuntime.emptyArgs);
+        }
+
         Callable f = getNameFunctionAndThis(name, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
+
+        if (forceCache) {
+            NameIC toCache = new NameIC();
+            toCache.target = f;
+            toCache.scope = scope;
+            toCache.thisObj = thisObj;
+
+            lruCache.put(name.hashCode(), toCache);
+        }
+
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
