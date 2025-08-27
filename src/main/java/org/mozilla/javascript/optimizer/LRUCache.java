@@ -24,4 +24,8 @@ public class LRUCache {
         }
         this.map.put(key, value);
     }
+
+    public void delete(int key) {
+        this.map.remove(key);
+    }
 }

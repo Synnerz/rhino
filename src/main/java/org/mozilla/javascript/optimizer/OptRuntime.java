@@ -20,6 +20,8 @@ import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.Undefined;
 
+import java.lang.ref.WeakReference;
+
 public final class OptRuntime extends ScriptRuntime {
     public static final Double oneObj = Double.valueOf(1.0);
     public static final Double minusOneObj = Double.valueOf(-1.0);
@@ -27,9 +29,9 @@ public final class OptRuntime extends ScriptRuntime {
     public static final LRUCache lruCache = new LRUCache(64);
 
     public static final class NameIC {
-        volatile Callable target;
-        volatile Scriptable thisObj;
-        volatile Scriptable scope;
+        volatile WeakReference<Callable> target;
+        volatile WeakReference<Scriptable> thisObj;
+        volatile WeakReference<Scriptable> scope;
     }
 
     /** Implement ....() call shrinking optimizer code. */
@@ -79,11 +81,19 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement name(args) call shrinking optimizer code. */
     public static Object callName(Object[] args, String name, Context cx, Scriptable scope) {
-        NameIC cached = lruCache.get(name.hashCode());
+        int k = System.identityHashCode(scope) ^ name.hashCode();
+        NameIC cached = lruCache.get(k);
         // TODO: look into why caching imports breaks the entire program
         boolean forceCache = !name.equals("require");
         if (cached != null) {
-            return cached.target.call(cx, scope, cached.thisObj, args);
+            Callable target = cached.target.get();
+            Scriptable thisObj = cached.thisObj.get();
+
+            if (target != null && thisObj != null) {
+                return target.call(cx, scope, thisObj, args);
+            } else {
+                lruCache.delete(k);
+            }
         }
 
         Callable f = getNameFunctionAndThis(name, cx, scope);
@@ -91,11 +101,11 @@ public final class OptRuntime extends ScriptRuntime {
 
         if (forceCache) {
             NameIC toCache = new NameIC();
-            toCache.target = f;
-            toCache.scope = scope;
-            toCache.thisObj = thisObj;
+            toCache.target = new WeakReference<>(f);
+            toCache.scope = new WeakReference<>(scope);
+            toCache.thisObj = new WeakReference<>(thisObj);
 
-            lruCache.put(name.hashCode(), toCache);
+            lruCache.put(k, toCache);
         }
 
         return f.call(cx, scope, thisObj, args);
@@ -103,10 +113,18 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement name() call shrinking optimizer code. */
     public static Object callName0(String name, Context cx, Scriptable scope) {
-        NameIC cached = lruCache.get(name.hashCode());
+        int k = System.identityHashCode(scope) ^ name.hashCode();
+        NameIC cached = lruCache.get(k);
         boolean forceCache = !name.equals("require");
         if (cached != null) {
-            return cached.target.call(cx, scope, cached.thisObj, ScriptRuntime.emptyArgs);
+            Callable target = cached.target.get();
+            Scriptable thisObj = cached.thisObj.get();
+
+            if (target != null && thisObj != null) {
+                return target.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
+            } else {
+                lruCache.delete(k);
+            }
         }
 
         Callable f = getNameFunctionAndThis(name, cx, scope);
@@ -114,11 +132,11 @@ public final class OptRuntime extends ScriptRuntime {
 
         if (forceCache) {
             NameIC toCache = new NameIC();
-            toCache.target = f;
-            toCache.scope = scope;
-            toCache.thisObj = thisObj;
+            toCache.target = new WeakReference<>(f);
+            toCache.scope = new WeakReference<>(scope);
+            toCache.thisObj = new WeakReference<>(thisObj);
 
-            lruCache.put(name.hashCode(), toCache);
+            lruCache.put(k, toCache);
         }
 
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
