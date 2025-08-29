@@ -1,31 +1,31 @@
 package org.mozilla.javascript.optimizer;
 
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
-public class LRUCache {
+public class LRUCache<T> {
     private int capacity;
-    private LinkedHashMap<Integer, OptRuntime.NameIC> map;
+    private LinkedHashMap<Integer, T> map;
 
     public LRUCache(int capacity) {
         this.capacity = capacity;
-        this.map = new LinkedHashMap<>(16, 0.75f, true);
+        this.map = new LinkedHashMap<Integer, T>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Integer, T> eldest) {
+                return size() > LRUCache.this.capacity;
+            }
+        };
     }
 
-    public OptRuntime.NameIC get(int key) {
-        return this.map.get(key);
+    public synchronized T get(int key) {
+        return map.get(key);
     }
 
-    public void put(int key, OptRuntime.NameIC value) {
-        if (!this.map.containsKey(key) && this.map.size() == this.capacity) {
-            Iterator<Integer> it = this.map.keySet().iterator();
-            it.next();
-            it.remove();
-        }
-        this.map.put(key, value);
+    public synchronized void put(int key, T value) {
+        map.put(key, value);
     }
 
-    public void delete(int key) {
-        this.map.remove(key);
+    public synchronized void delete(int key) {
+        map.remove(key);
     }
 }
