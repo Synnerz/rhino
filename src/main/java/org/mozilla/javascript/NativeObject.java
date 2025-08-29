@@ -24,6 +24,7 @@ import org.mozilla.javascript.ScriptRuntime.StringIdOrIndex;
  */
 public class NativeObject extends IdScriptableObject implements Map {
     private static final long serialVersionUID = -6345305608474346996L;
+    private int shapeInt;
 
     private static final Object OBJECT_TAG = "Object";
 
@@ -789,6 +790,22 @@ public class NativeObject extends IdScriptableObject implements Map {
     @Override
     public Object put(Object key, Object value) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void put(String name, Scriptable start, Object value) {
+        super.put(name, start, value);
+        shapeInt++;
+    }
+
+    @Override
+    public void delete(String name) {
+        super.delete(name);
+        shapeInt++;
+    }
+
+    public int getShapeInt() {
+        return shapeInt;
     }
 
     @Override
