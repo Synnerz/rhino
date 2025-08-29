@@ -4,21 +4,7 @@
 
 package org.mozilla.javascript.optimizer;
 
-import org.mozilla.javascript.ArrowFunction;
-import org.mozilla.javascript.Callable;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.ES6Generator;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.JavaScriptException;
-import org.mozilla.javascript.NativeFunction;
-import org.mozilla.javascript.NativeGenerator;
-import org.mozilla.javascript.NativeIterator;
-import org.mozilla.javascript.Script;
-import org.mozilla.javascript.ScriptRuntime;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.Undefined;
+import org.mozilla.javascript.*;
 
 import java.lang.ref.WeakReference;
 
@@ -26,12 +12,20 @@ public final class OptRuntime extends ScriptRuntime {
     public static final Double oneObj = Double.valueOf(1.0);
     public static final Double minusOneObj = Double.valueOf(-1.0);
 
-    public static final LRUCache lruCache = new LRUCache(64);
+    public static final LRUCache<NameIC> lruCache = new LRUCache<>(128);
+    public static final LRUCache<PropertyIC> propCache = new LRUCache<>(128);
 
     public static final class NameIC {
         volatile WeakReference<Callable> target;
         volatile WeakReference<Scriptable> thisObj;
         volatile WeakReference<Scriptable> scope;
+    }
+
+    public static final class PropertyIC {
+        volatile WeakReference<Callable> target;
+        volatile WeakReference<Scriptable> obj;
+        volatile WeakReference<Scriptable> thisObj;
+        volatile int shape;
     }
 
     /** Implement ....() call shrinking optimizer code. */
@@ -144,8 +138,39 @@ public final class OptRuntime extends ScriptRuntime {
 
     /** Implement x.property() call shrinking optimizer code. */
     public static Object callProp0(Object value, String property, Context cx, Scriptable scope) {
+        if (!(value instanceof NativeObject)) {
+            Callable f = getPropFunctionAndThis(value, property, cx, scope);
+            Scriptable thisObj = lastStoredScriptable(cx);
+            return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
+        }
+
+        NativeObject obj = (NativeObject) value;
+        int valueShape = obj.getShapeInt();
+        int k = System.identityHashCode(obj) ^ property.hashCode();
+        PropertyIC cached = propCache.get(k);
+
+        if (cached != null) {
+            Callable target = cached.target.get();
+            Scriptable cobj = cached.obj.get();
+            Scriptable thisObj = cached.thisObj.get();
+
+            if (cobj == obj && cached.shape == valueShape && target != null && thisObj != null) {
+                return target.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
+            } else {
+                propCache.delete(k);
+            }
+        }
+
         Callable f = getPropFunctionAndThis(value, property, cx, scope);
         Scriptable thisObj = lastStoredScriptable(cx);
+
+        PropertyIC toCache = new PropertyIC();
+        toCache.target = new WeakReference<>(f);
+        toCache.thisObj = new WeakReference<>(thisObj);
+        toCache.obj = new WeakReference<>(obj);
+        toCache.shape = valueShape;
+        propCache.put(k, toCache);
+
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
