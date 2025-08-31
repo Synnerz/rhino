@@ -6,6 +6,7 @@
 package org.mozilla.javascript;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -43,72 +44,66 @@ import java.util.List;
  * </code> and <code>java.util.List</code>. Also deleting entries will set entries to <code>null
  * </code> instead to <code>Undefined</code>
  */
-public class NativeJavaList extends NativeJavaObject {
+public class NativeJavaList extends NativeJavaObject implements SymbolScriptable {
+    private static final long serialVersionUID = -924027554283675333L;
 
-    private static final long serialVersionUID = 660285467829047519L;
+    @Override
+    public String getClassName() {
+        return "JavaArray";
+    }
 
-    private List<Object> list;
+    public static NativeJavaList wrap(Scriptable scope, Object array) {
+        return new NativeJavaList(scope, array);
+    }
 
-    @SuppressWarnings("unchecked")
+    @Override
+    public Object unwrap() {
+        return list;
+    }
+
     public NativeJavaList(Scriptable scope, Object list) {
-        super(scope, list, list.getClass());
-        assert list instanceof List;
+        super(scope, null, list.getClass());
+        if (!(list instanceof List)) {
+            throw new RuntimeException("Array expected");
+        }
+        //noinspection unchecked
         this.list = (List<Object>) list;
     }
 
     @Override
-    public String getClassName() {
-        return "JavaList";
-    }
-
-    @Override
-    public boolean has(String name, Scriptable start) {
-        if (name.equals("length")) {
-            return true;
-        }
-        return super.has(name, start);
+    public boolean has(String id, Scriptable start) {
+        return id.equals("length") || super.has(id, start);
     }
 
     @Override
     public boolean has(int index, Scriptable start) {
-        if (isWithValidIndex(index)) {
-            return true;
-        }
-        return super.has(index, start);
-    }
-
-    @Override
-    public void delete(int index) {
-        if (isWithValidIndex(index)) {
-            list.set(index, null);
-        }
+        return 0 <= index && index < list.size();
     }
 
     @Override
     public boolean has(Symbol key, Scriptable start) {
-        if (SymbolKey.IS_CONCAT_SPREADABLE.equals(key)) {
-            return true;
-        }
-        return super.has(key, start);
+        return SymbolKey.IS_CONCAT_SPREADABLE.equals(key);
     }
 
     @Override
-    public Object get(String name, Scriptable start) {
-        if ("length".equals(name)) {
-            return Integer.valueOf(list.size());
+    public Object get(String id, Scriptable start) {
+        if (id.equals("length"))
+            return list.size();
+        Object result = super.get(id, start);
+        if (result == NOT_FOUND &&
+                !ScriptableObject.hasProperty(getPrototype(), id)) {
+            throw Context.reportRuntimeError2(
+                    "msg.java.member.not.found", list.getClass().getName(), id);
         }
-        return super.get(name, start);
+        return result;
     }
 
     @Override
     public Object get(int index, Scriptable start) {
-        if (isWithValidIndex(index)) {
-            Context cx = Context.getCurrentContext();
-            Object obj = list.get(index);
-            if (cx != null) {
-                return cx.getWrapFactory().wrap(cx, this, obj, obj == null ? null : obj.getClass());
-            }
-            return obj;
+        if (0 <= index && index < list.size()) {
+            Context cx = Context.getContext();
+            Object element = list.get(index);
+            return cx.getWrapFactory().wrap(cx, this, element, null);
         }
         return Undefined.instance;
     }
@@ -116,82 +111,67 @@ public class NativeJavaList extends NativeJavaObject {
     @Override
     public Object get(Symbol key, Scriptable start) {
         if (SymbolKey.IS_CONCAT_SPREADABLE.equals(key)) {
-            return Boolean.TRUE;
+            return true;
         }
-        return super.get(key, start);
+        return Scriptable.NOT_FOUND;
+    }
+
+    @Override
+    public void put(String id, Scriptable start, Object value) {
+        // Ignore assignments to "length"--it's readonly.
+        if (!id.equals("length"))
+            throw Context.reportRuntimeError1(
+                    "msg.java.array.member.not.found", id);
     }
 
     @Override
     public void put(int index, Scriptable start, Object value) {
-        if (index >= 0) {
-            Object javaValue = Context.jsToJava(value, Object.class);
-            if (index == list.size()) {
-                list.add(javaValue); // use "add" at the end of list.
-            } else {
-                ensureCapacity(index + 1);
-                list.set(index, javaValue);
-            }
-            return;
+        for (int i = list.size(); i <= index; i++) {
+            list.add(null);
         }
-        super.put(index, start, value);
+
+        if (0 <= index) {
+            list.set(index, Context.jsToJava(value, Object.class));
+        } else {
+            throw Context.reportRuntimeError2(
+                    "msg.java.array.index.out.of.bounds", String.valueOf(index),
+                    String.valueOf(list.size() - 1));
+        }
     }
 
     @Override
-    public void put(String name, Scriptable start, Object value) {
-        if (list != null && "length".equals(name)) {
-            setLength(value);
-            return;
-        }
-        super.put(name, start, value);
+    public void delete(Symbol key) {
+        // All symbols are read-only
     }
 
-    private void ensureCapacity(int minCapacity) {
-        if (minCapacity > list.size()) {
-            if (list instanceof ArrayList) {
-                ((ArrayList<?>) list).ensureCapacity(minCapacity);
-            }
-            while (minCapacity > list.size()) {
-                list.add(null);
-            }
-        }
-    }
-
-    private void setLength(Object val) {
-        double d = ScriptRuntime.toNumber(val);
-        long longVal = ScriptRuntime.toUint32(d);
-        if (longVal != d || longVal > Integer.MAX_VALUE) {
-            String msg = ScriptRuntime.getMessageById("msg.arraylength.bad");
-            throw ScriptRuntime.rangeError(msg);
-        }
-        if (longVal < list.size()) {
-            list.subList((int) longVal, list.size()).clear();
-        } else {
-            ensureCapacity((int) longVal);
-        }
+    @Override
+    public Object getDefaultValue(Class<?> hint) {
+        if (hint == null || hint == ScriptRuntime.StringClass)
+            return Arrays.deepToString(list.toArray(new Object[0]));
+        if (hint == ScriptRuntime.BooleanClass)
+            return Boolean.TRUE;
+        if (hint == ScriptRuntime.NumberClass)
+            return ScriptRuntime.NaNobj;
+        return this;
     }
 
     @Override
     public Object[] getIds() {
-        List<?> list = (List<?>) javaObject;
         Object[] result = new Object[list.size()];
-        int i = list.size();
-        while (--i >= 0) {
-            result[i] = Integer.valueOf(i);
-        }
+        int i = result.length;
+        while (--i >= 0)
+            result[i] = i;
         return result;
     }
 
-    private boolean isWithValidIndex(int index) {
-        return index >= 0 && index < list.size();
+    @Override
+    public Scriptable getPrototype() {
+        if (prototype == null) {
+            prototype =
+                    ScriptableObject.getArrayPrototype(this.getParentScope());
+        }
+        return prototype;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        return super.equals(obj);
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
+    List<Object> list;
 }

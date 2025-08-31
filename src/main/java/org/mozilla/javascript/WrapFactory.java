@@ -71,6 +71,9 @@ public class WrapFactory {
         if (cls.isArray()) {
             return NativeJavaArray.wrap(scope, obj);
         }
+        if (obj instanceof List) {
+            return NativeJavaList.wrap(scope, obj);
+        }
         return wrapAsJavaObject(cx, scope, obj, staticType);
     }
 
@@ -89,6 +92,9 @@ public class WrapFactory {
         Class<?> cls = obj.getClass();
         if (cls.isArray()) {
             return NativeJavaArray.wrap(scope, obj);
+        }
+        if (obj instanceof List) {
+            return NativeJavaList.wrap(scope, obj);
         }
         return wrapAsJavaObject(cx, scope, obj, null);
     }
