@@ -19,7 +19,7 @@ class JavaMembers_jdk11 extends JavaMembers {
     }
 
     @Override
-    void discoverPublicMethods(Class<?> clazz, Map<MethodSignature, Method> map) {
+    void discoverPublicMethods(Class<?> clazz, Map<JavaObjectMappingProvider.MethodSignature, JavaObjectMappingProvider.RenameableMethod> map) {
         if (isExportedClass(clazz)) {
             super.discoverPublicMethods(clazz, map);
         } else {

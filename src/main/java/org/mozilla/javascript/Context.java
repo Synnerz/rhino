@@ -2639,6 +2639,14 @@ public class Context implements Closeable {
                 || (currentActivationCall != null && currentActivationCall.isStrict);
     }
 
+    public JavaObjectMappingProvider getJavaObjectMappingProvider() {
+        return javaObjectMappingProvider;
+    }
+
+    public void setJavaObjectMappingProvider(JavaObjectMappingProvider provider) {
+        javaObjectMappingProvider = provider;
+    }
+
     public static boolean isCurrentContextStrict() {
         Context cx = getCurrentContext();
         if (cx == null) {
@@ -2686,6 +2694,7 @@ public class Context implements Closeable {
     private Object propertyListeners;
     private Map<Object, Object> threadLocalMap;
     private ClassLoader applicationClassLoader;
+    private JavaObjectMappingProvider javaObjectMappingProvider = JavaObjectMappingProvider.EMPTY;
     private UnaryOperator<Object> javaToJSONConverter;
     private final ArrayDeque<Runnable> microtasks = new ArrayDeque<>();
     private final UnhandledRejectionTracker unhandledPromises = new UnhandledRejectionTracker();

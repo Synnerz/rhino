@@ -144,12 +144,12 @@ public class ImporterTopLevel extends TopLevel {
         js_importPackage(this, args);
     }
 
-    private Object js_construct(Scriptable scope, Object[] args) {
+    private Object js_construct(Context cx, Scriptable scope, Object[] args) {
         ImporterTopLevel result = new ImporterTopLevel();
         for (int i = 0; i != args.length; ++i) {
             Object arg = args[i];
             if (arg instanceof NativeJavaClass) {
-                ImporterTopLevel.importClass(result, (NativeJavaClass) arg);
+                ImporterTopLevel.importClass(cx, result, (NativeJavaClass) arg);
             } else if (arg instanceof NativeJavaPackage) {
                 ImporterTopLevel.importPackage(result, (NativeJavaPackage) arg);
             } else {
@@ -167,13 +167,13 @@ public class ImporterTopLevel extends TopLevel {
         return result;
     }
 
-    private static Object js_importClass(Scriptable scope, Object[] args) {
+    private static Object js_importClass(Context cx, Scriptable scope, Object[] args) {
         for (int i = 0; i != args.length; i++) {
             Object arg = args[i];
             if (!(arg instanceof NativeJavaClass)) {
                 throw Context.reportRuntimeErrorById("msg.not.class", Context.toString(arg));
             }
-            importClass(scope, (NativeJavaClass) arg);
+            importClass(cx, scope, (NativeJavaClass) arg);
         }
         return Undefined.instance;
     }
@@ -208,7 +208,7 @@ public class ImporterTopLevel extends TopLevel {
         }
     }
 
-    private static void importClass(Scriptable scope, NativeJavaClass cl) {
+    private static void importClass(Context cx, Scriptable scope, NativeJavaClass cl) {
         String s = cl.getClassObject().getName();
         String n = s.substring(s.lastIndexOf('.') + 1);
         Object val = scope.get(n, scope);
@@ -217,6 +217,12 @@ public class ImporterTopLevel extends TopLevel {
         }
         // defineProperty(n, cl, DONTENUM);
         scope.put(n, scope, cl);
+        // Need to check if this is a mapped name
+        String unmappedName = cx.getJavaObjectMappingProvider().unmapClassName(s);
+        if (unmappedName != null) {
+            n = unmappedName.substring(unmappedName.lastIndexOf('.') + 1);
+            scope.put(n, scope, cl);
+        }
     }
 
     @Override
@@ -251,10 +257,10 @@ public class ImporterTopLevel extends TopLevel {
         int id = f.methodId();
         switch (id) {
             case Id_constructor:
-                return js_construct(scope, args);
+                return js_construct(cx, scope, args);
 
             case Id_importClass:
-                return js_importClass(realScope(scope, thisObj, f), args);
+                return js_importClass(cx, realScope(scope, thisObj, f), args);
 
             case Id_importPackage:
                 return js_importPackage(realScope(scope, thisObj, f), args);

@@ -9,6 +9,9 @@ package org.mozilla.javascript;
 import static java.lang.reflect.Modifier.isProtected;
 import static java.lang.reflect.Modifier.isPublic;
 
+import org.mozilla.javascript.JavaObjectMappingProvider.MethodSignature;
+import org.mozilla.javascript.JavaObjectMappingProvider.RenameableField;
+import org.mozilla.javascript.JavaObjectMappingProvider.RenameableMethod;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -303,18 +306,19 @@ class JavaMembers {
      * and interfaces (if they exist). Basically upcasts every method to the nearest accessible
      * method.
      */
-    private Method[] discoverAccessibleMethods(
+    private RenameableMethod[] discoverAccessibleMethods(
             Class<?> clazz, boolean includeProtected, boolean includePrivate) {
-        Map<MethodSignature, Method> map = new HashMap<>();
+        Map<MethodSignature, RenameableMethod> map = new HashMap<>();
         discoverAccessibleMethods(clazz, map, includeProtected, includePrivate);
-        return map.values().toArray(new Method[0]);
+        return map.values().toArray(new RenameableMethod[0]);
     }
 
     private void discoverAccessibleMethods(
             Class<?> clazz,
-            Map<MethodSignature, Method> map,
+            Map<MethodSignature, RenameableMethod> map,
             boolean includeProtected,
             boolean includePrivate) {
+        Context.getCurrentContext().getJavaObjectMappingProvider().findExtraMethods(clazz, map, includeProtected, includePrivate);
         if (isPublic(clazz.getModifiers()) || includePrivate) {
             try {
                 if (includeProtected || includePrivate) {
@@ -329,7 +333,7 @@ class JavaMembers {
                                     if (!map.containsKey(sig)) {
                                         if (includePrivate && !method.isAccessible())
                                             method.setAccessible(true);
-                                        map.put(sig, method);
+                                        map.put(sig, new RenameableMethod(method));
                                     }
                                 }
                             }
@@ -346,7 +350,7 @@ class JavaMembers {
                             Method[] methods = clazz.getMethods();
                             for (Method method : methods) {
                                 MethodSignature sig = new MethodSignature(method);
-                                if (!map.containsKey(sig)) map.put(sig, method);
+                                if (!map.containsKey(sig)) map.put(sig, new RenameableMethod(method));
                             }
                             break; // getMethods gets superclass methods, no
                             // need to loop any more
@@ -377,46 +381,18 @@ class JavaMembers {
         }
     }
 
-    void discoverPublicMethods(Class<?> clazz, Map<MethodSignature, Method> map) {
+    void discoverPublicMethods(Class<?> clazz, Map<MethodSignature, RenameableMethod> map) {
         Method[] methods = clazz.getMethods();
         for (Method method : methods) {
             registerMethod(map, method);
         }
     }
 
-    static void registerMethod(Map<MethodSignature, Method> map, Method method) {
+    static void registerMethod(Map<MethodSignature, RenameableMethod> map, Method method) {
         MethodSignature sig = new MethodSignature(method);
         // Array may contain methods with same signature but different return value!
         if (!map.containsKey(sig)) {
-            map.put(sig, method);
-        }
-    }
-
-    static final class MethodSignature {
-        private final String name;
-        private final Class<?>[] args;
-
-        private MethodSignature(String name, Class<?>[] args) {
-            this.name = name;
-            this.args = args;
-        }
-
-        MethodSignature(Method method) {
-            this(method.getName(), method.getParameterTypes());
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o instanceof MethodSignature) {
-                MethodSignature ms = (MethodSignature) o;
-                return ms.name.equals(name) && Arrays.equals(args, ms.args);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode() ^ args.length;
+            map.put(sig, new RenameableMethod(method));
         }
     }
 
@@ -426,12 +402,13 @@ class JavaMembers {
         // names to be allocated to the NativeJavaMethod before the field
         // gets in the way.
 
-        Method[] methods = discoverAccessibleMethods(cl, includeProtected, includePrivate);
-        for (Method method : methods) {
+        RenameableMethod[] methods = discoverAccessibleMethods(cl, includeProtected, includePrivate);
+        for (RenameableMethod renamed : methods) {
+            Method method = renamed.getMethod();
             int mods = method.getModifiers();
             boolean isStatic = Modifier.isStatic(mods);
             Map<String, Object> ht = isStatic ? staticMembers : members;
-            String name = method.getName();
+            String name = renamed.getName();
             Object value = ht.get(name);
             if (value == null) {
                 ht.put(name, method);
@@ -481,9 +458,10 @@ class JavaMembers {
         }
 
         // Reflect fields.
-        Field[] fields = getAccessibleFields(includeProtected, includePrivate);
-        for (Field field : fields) {
-            String name = field.getName();
+        RenameableField[] fields = getAccessibleFields(includeProtected, includePrivate);
+        for (RenameableField renamed : fields) {
+            Field field = renamed.getField();
+            String name = renamed.getName();
             int mods = field.getModifiers();
             try {
                 boolean isStatic = Modifier.isStatic(mods);
@@ -653,10 +631,12 @@ class JavaMembers {
         return cl.getConstructors();
     }
 
-    private Field[] getAccessibleFields(boolean includeProtected, boolean includePrivate) {
+    private RenameableField[] getAccessibleFields(boolean includeProtected, boolean includePrivate) {
+        List<RenameableField> fieldsList = new ArrayList<>();
+        Context.getCurrentContext().getJavaObjectMappingProvider().findExtraFields(cl, fieldsList, includeProtected, includePrivate);
+
         if (includePrivate || includeProtected) {
             try {
-                List<Field> fieldsList = new ArrayList<>();
                 Class<?> currentClass = cl;
 
                 while (currentClass != null) {
@@ -667,7 +647,7 @@ class JavaMembers {
                         int mod = field.getModifiers();
                         if (includePrivate || isPublic(mod) || isProtected(mod)) {
                             if (!field.isAccessible()) field.setAccessible(true);
-                            fieldsList.add(field);
+                            fieldsList.add(new RenameableField(field));
                         }
                     }
                     // walk up superclass chain.  no need to deal specially with
@@ -675,12 +655,15 @@ class JavaMembers {
                     currentClass = currentClass.getSuperclass();
                 }
 
-                return fieldsList.toArray(new Field[0]);
+                return fieldsList.toArray(new RenameableField[0]);
             } catch (SecurityException e) {
                 // fall through to !includePrivate case
             }
         }
-        return cl.getFields();
+        for (Field field : cl.getFields())
+            fieldsList.add(new RenameableField(field));
+
+        return fieldsList.toArray(new RenameableField[0]);
     }
 
     private static MemberBox findGetter(
