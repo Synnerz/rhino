@@ -3290,22 +3290,7 @@ public class ScriptRuntime {
         int L = args.length;
         Callable function = getCallable(thisObj);
 
-        Scriptable callThis = null;
-        if (L != 0) {
-            if (cx.hasFeature(Context.FEATURE_OLD_UNDEF_NULL_THIS)) {
-                callThis = toObjectOrNull(cx, args[0], scope);
-            } else {
-                callThis =
-                        args[0] == Undefined.instance
-                                ? Undefined.SCRIPTABLE_UNDEFINED
-                                : toObjectOrNull(cx, args[0], scope);
-            }
-        }
-        if (callThis == null && cx.hasFeature(Context.FEATURE_OLD_UNDEF_NULL_THIS)) {
-            callThis =
-                    getTopCallScope(
-                            cx); // This covers the case of args[0] == (null|undefined) as well.
-        }
+        Scriptable callThis = getApplyOrCallThis(cx, scope, L == 0 ? null : args[0], L, function);
 
         Object[] callArgs;
         if (isApply) {
@@ -3322,6 +3307,44 @@ public class ScriptRuntime {
         }
 
         return function.call(cx, scope, callThis, callArgs);
+    }
+
+    public static Scriptable getApplyOrCallThis(
+            Context cx, Scriptable scope, Object arg0, int l, Callable target) {
+        Scriptable callThis;
+        if (cx.hasFeature(Context.FEATURE_OLD_UNDEF_NULL_THIS)) {
+            // Legacy behavior
+            if (l != 0) {
+                callThis = toObjectOrNull(cx, arg0, scope);
+            } else {
+                callThis = null;
+            }
+            if (callThis == null) {
+                // This covers the case of args[0] == (null|undefined) as well.
+                callThis = getTopCallScope(cx);
+            }
+        } else {
+            // Spec-compliant behavior
+            if (l != 0) {
+                callThis =
+                        arg0 == Undefined.instance
+                                ? Undefined.SCRIPTABLE_UNDEFINED
+                                : toObjectOrNull(cx, arg0, scope);
+            } else {
+                callThis = Undefined.SCRIPTABLE_UNDEFINED;
+            }
+
+            // Replace missing this with global object only for non-strict functions
+            boolean missingCallThis =
+                    callThis == null || callThis == Undefined.SCRIPTABLE_UNDEFINED;
+            boolean isFunctionStrict =
+                    !(target instanceof NativeFunction) || ((NativeFunction) target).isStrict();
+            if (missingCallThis && !isFunctionStrict) {
+                callThis = getTopCallScope(cx);
+            }
+        }
+
+        return callThis;
     }
 
     /** @return true if the passed in Scriptable looks like an array */

@@ -797,7 +797,8 @@ public class Codegen implements Evaluator {
         final int Do_isGeneratorFunction = 6;
         final int Do_hasRestParameter = 7;
         final int Do_hasDefaultParameters = 8;
-        final int SWITCH_COUNT = 9;
+        final int Do_isStrict = 9;
+        final int SWITCH_COUNT = 10;
 
         for (int methodIndex = 0; methodIndex != SWITCH_COUNT; ++methodIndex) {
             if (methodIndex == Do_getEncodedSource && encodedSource == null) {
@@ -847,6 +848,10 @@ public class Codegen implements Evaluator {
                 case Do_hasDefaultParameters:
                     methodLocals = 1; // Only this
                     cfw.startMethod("hasDefaultParameters", "()Z", ACC_PUBLIC);
+                    break;
+                case Do_isStrict:
+                    methodLocals = 1; // Only this
+                    cfw.startMethod("isStrict", "()Z", ACC_PUBLIC);
                     break;
                 default:
                     throw Kit.codeBug();
@@ -1012,6 +1017,11 @@ public class Codegen implements Evaluator {
                                 "substring",
                                 "(II)Ljava/lang/String;");
                         cfw.add(ByteCode.ARETURN);
+                        break;
+
+                    case Do_isStrict:
+                        cfw.addPush(n.isInStrictMode() ? 1 : 0);
+                        cfw.add(ByteCode.IRETURN);
                         break;
 
                     default:
