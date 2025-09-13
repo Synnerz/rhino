@@ -846,9 +846,8 @@ public class NativeArray extends IdScriptableObject implements List {
                 throw ScriptRuntime.typeErrorById("msg.map.function.not");
             }
             mapFn = (Function) mapArg;
-            if (args.length >= 3) {
-                thisArg = ensureScriptable(args[2]);
-            }
+            Object callThisArg = args.length >= 3 ? args[2] : Undefined.SCRIPTABLE_UNDEFINED;
+            thisArg = ScriptRuntime.getApplyOrCallThis(cx, scope, callThisArg, 1, mapFn);
         }
 
         Object iteratorProp = ScriptableObject.getProperty(items, SymbolKey.ITERATOR);
