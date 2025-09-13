@@ -7,7 +7,6 @@
 package org.mozilla.javascript;
 
 import java.math.BigInteger;
-import java.util.Arrays;
 
 /** This class implements the BigInt native object. */
 final class NativeBigInt extends IdScriptableObject {
@@ -136,44 +135,9 @@ final class NativeBigInt extends IdScriptableObject {
     private static Object execConstructorCall(int id, Object[] args) {
         switch (id) {
             case ConstructorId_asIntN:
+                return js_asIntOrUintN(true, args);
             case ConstructorId_asUintN:
-                {
-                    int bits =
-                            ScriptRuntime.toIndex(args.length < 1 ? Undefined.instance : args[0]);
-                    BigInteger bigInt =
-                            ScriptRuntime.toBigInt(args.length < 2 ? Undefined.instance : args[1]);
-
-                    if (bits == 0) {
-                        return BigInteger.ZERO;
-                    }
-
-                    byte[] bytes = bigInt.toByteArray();
-
-                    int newBytesLen = (bits / Byte.SIZE) + 1;
-                    if (newBytesLen > bytes.length) {
-                        return bigInt;
-                    }
-
-                    byte[] newBytes =
-                            Arrays.copyOfRange(bytes, bytes.length - newBytesLen, bytes.length);
-
-                    int mod = bits % Byte.SIZE;
-                    switch (id) {
-                        case ConstructorId_asIntN:
-                            if (mod == 0) {
-                                newBytes[0] = newBytes[1] < 0 ? (byte) -1 : 0;
-                            } else if ((newBytes[0] & (1 << (mod - 1))) != 0) {
-                                newBytes[0] |= -1 << mod;
-                            } else {
-                                newBytes[0] &= (1 << mod) - 1;
-                            }
-                            break;
-                        case ConstructorId_asUintN:
-                            newBytes[0] &= (1 << mod) - 1;
-                            break;
-                    }
-                    return new BigInteger(newBytes);
-                }
+                return js_asIntOrUintN(false, args);
 
             default:
                 throw new IllegalArgumentException(String.valueOf(id));
@@ -217,6 +181,57 @@ final class NativeBigInt extends IdScriptableObject {
                 break;
         }
         return id;
+    }
+
+    private static Object js_asIntOrUintN(boolean isSigned, Object[] args) {
+        int bits = ScriptRuntime.toIndex(args.length < 1 ? Undefined.instance : args[0]);
+        BigInteger bigInt = ScriptRuntime.toBigInt(args.length < 2 ? Undefined.instance : args[1]);
+
+        if (bits == 0) {
+            return BigInteger.ZERO;
+        }
+
+        BigInteger modulus = BigInteger.ONE.shiftLeft(bits); // 2^bits
+
+        if (isSigned) {
+            return asSignedN(bigInt, bits, modulus);
+        } else {
+            return asUnsignedN(bigInt, modulus);
+        }
+    }
+
+    private static BigInteger asUnsignedN(BigInteger bigInt, BigInteger modulus) {
+        // For unsigned: return bigInt modulo 2^bits, ensuring non-negative result
+        BigInteger result = bigInt.remainder(modulus);
+
+        // Ensure result is non-negative for unsigned representation
+        if (result.signum() < 0) {
+            result = result.add(modulus);
+        }
+
+        return result;
+    }
+
+    private static BigInteger asSignedN(BigInteger bigInt, int bits, BigInteger modulus) {
+        // For signed: use two's complement representation
+        BigInteger halfModulus = BigInteger.ONE.shiftLeft(bits - 1); // 2^(bits-1)
+        BigInteger minValue = halfModulus.negate(); // -2^(bits-1)
+        BigInteger maxValue = halfModulus.subtract(BigInteger.ONE); // 2^(bits-1) - 1
+
+        // If the number already fits in the signed range, return as is
+        if (bigInt.compareTo(minValue) >= 0 && bigInt.compareTo(maxValue) <= 0) {
+            return bigInt;
+        }
+
+        // Compute unsigned result first
+        BigInteger result = asUnsignedN(bigInt, modulus);
+
+        // Convert to signed range if needed
+        if (result.compareTo(halfModulus) >= 0) {
+            result = result.subtract(modulus);
+        }
+
+        return result;
     }
 
     private static final int ConstructorId_asIntN = -1,
