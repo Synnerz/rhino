@@ -178,27 +178,27 @@ public class Codegen implements Evaluator {
     private void transform(ScriptNode tree) {
         initOptFunctions_r(tree);
 
-        int optLevel = compilerEnv.getOptimizationLevel();
+        if (compilerEnv.getOptimizationLevel() == 0) {
+            Kit.codeBug("Codegen must not run in interpreted Mode");
+        }
 
         Map<String, OptFunctionNode> possibleDirectCalls = null;
-        if (optLevel > 0) {
-            /*
-             * Collect all of the contained functions into a hashtable
-             * so that the call optimizer can access the class name & parameter
-             * count for any call it encounters
-             */
-            if (tree.getType() == Token.SCRIPT) {
-                int functionCount = tree.getFunctionCount();
-                for (int i = 0; i != functionCount; ++i) {
-                    OptFunctionNode ofn = OptFunctionNode.get(tree, i);
-                    if (ofn.fnode.getFunctionType() == FunctionNode.FUNCTION_STATEMENT) {
-                        String name = ofn.fnode.getName();
-                        if (name.length() != 0) {
-                            if (possibleDirectCalls == null) {
-                                possibleDirectCalls = new HashMap<>();
-                            }
-                            possibleDirectCalls.put(name, ofn);
+        /*
+         * Collect all of the contained functions into a hashtable
+         * so that the call optimizer can access the class name & parameter
+         * count for any call it encounters
+         */
+        if (tree.getType() == Token.SCRIPT) {
+            int functionCount = tree.getFunctionCount();
+            for (int i = 0; i != functionCount; ++i) {
+                OptFunctionNode ofn = OptFunctionNode.get(tree, i);
+                if (ofn.fnode.getFunctionType() == FunctionNode.FUNCTION_STATEMENT) {
+                    String name = ofn.fnode.getName();
+                    if (name.length() != 0) {
+                        if (possibleDirectCalls == null) {
+                            possibleDirectCalls = new HashMap<>();
                         }
+                        possibleDirectCalls.put(name, ofn);
                     }
                 }
             }
@@ -211,9 +211,7 @@ public class Codegen implements Evaluator {
         OptTransformer ot = new OptTransformer(possibleDirectCalls, directCallTargets);
         ot.transform(tree, compilerEnv);
 
-        if (optLevel > 0) {
-            (new Optimizer()).optimize(tree);
-        }
+        (new Optimizer()).optimize(tree);
     }
 
     private static void initOptFunctions_r(ScriptNode scriptOrFn) {
