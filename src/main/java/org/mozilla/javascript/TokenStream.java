@@ -758,9 +758,14 @@ class TokenStream {
                         }
                     }
                 }
-                ungetChar(c);
+                // `ungetChar` will decrement the cursor, however the _actual_ tokenEnd should
+                // still be restored correctly after `getStringFromBuffer()` mutates it, so we save
+                // and restore it.
+                int savedTokenEnd = cursor;
+                ungetChar(c); // decrements cursor
+                String str = getStringFromBuffer(); // mutates tokenEnd to point to cursor
+                tokenEnd = savedTokenEnd; // restore tokenEnd
 
-                String str = getStringFromBuffer();
                 if (!containsEscape
                         || parser.compilerEnv.getLanguageVersion() >= Context.VERSION_ES6) {
                     // OPT we shouldn't have to make a string (object!) to
