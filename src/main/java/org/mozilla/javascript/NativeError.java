@@ -54,14 +54,27 @@ final class NativeError extends IdScriptableObject {
                 obj.setAttributes("message", ScriptableObject.DONTENUM);
             }
             if (arglen >= 2) {
-                ScriptableObject.putProperty(obj, "fileName", args[1]);
-                if (arglen >= 3) {
-                    int line = ScriptRuntime.toInt32(args[2]);
-                    ScriptableObject.putProperty(obj, "lineNumber", line);
+                if (args[1] instanceof NativeObject) {
+                    NativeObject options = (NativeObject) args[1];
+                    Object cause = ScriptableObject.getProperty(options, "cause");
+                    if (cause != ScriptableObject.NOT_FOUND) {
+                        ScriptableObject.putProperty(obj, "cause", cause);
+                        obj.setAttributes("cause", ScriptableObject.DONTENUM);
+                    }
+                } else {
+                    ScriptableObject.putProperty(obj, "fileName", ScriptRuntime.toString(args[1]));
+                    if (arglen >= 3) {
+                        ScriptableObject.putProperty(
+                                obj, "lineNumber", ScriptRuntime.toInt32(args[2]));
+                    }
                 }
             }
         }
         return obj;
+    }
+
+    private static NativeError realThis(Scriptable thisObj, IdFunctionObject f) {
+        return ensureType(thisObj, NativeError.class, f);
     }
 
     @Override
@@ -156,7 +169,10 @@ final class NativeError extends IdScriptableObject {
                 return err;
 
             case Id_toString:
-                return js_toString(thisObj);
+                if (thisObj != scope && thisObj instanceof NativeObject) {
+                    return js_toString(thisObj);
+                }
+                return js_toString(realThis(thisObj, f));
 
             case Id_toSource:
                 return js_toSource(cx, scope, thisObj);
