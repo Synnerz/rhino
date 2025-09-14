@@ -124,38 +124,40 @@ public class Token {
 
     // End of interpreter bytecodes
     public static final int LAST_BYTECODE_TOKEN = BIGINT,
-            TRY = 84,
-            SEMI = 85, // semicolon
-            LB = 86, // left and right brackets
-            RB = 87,
-            LC = 88, // left and right curlies (braces)
-            RC = 89,
-            LP = 90, // left and right parentheses
-            RP = 91,
-            COMMA = 92, // comma operator
-            ASSIGN = 93, // simple assignment  (=)
-            ASSIGN_BITOR = 94, // |=
-            ASSIGN_BITXOR = 95, // ^=
-            ASSIGN_BITAND = 96, // |=
-            ASSIGN_LSH = 97, // <<=
-            ASSIGN_RSH = 98, // >>=
-            ASSIGN_URSH = 99, // >>>=
-            ASSIGN_ADD = 100, // +=
-            ASSIGN_SUB = 101, // -=
-            ASSIGN_MUL = 102, // *=
-            ASSIGN_DIV = 103, // /=
-            ASSIGN_MOD = 104, // %=
-            ASSIGN_EXP = 105; // **=
+            TRY = LAST_BYTECODE_TOKEN + 1,
+            SEMI = TRY + 1, // semicolon
+            LB = SEMI + 1, // left and right brackets
+            RB = LB + 1,
+            LC = RB + 1, // left and right curlies (braces)
+            RC = LC + 1,
+            LP = RC + 1, // left and right parentheses
+            RP = LP + 1,
+            COMMA = RP + 1, // comma operator
+            ASSIGN = COMMA + 1, // simple assignment  (=)
+            ASSIGN_BITOR = ASSIGN + 1, // |=
+            ASSIGN_LOGICAL_OR = ASSIGN_BITOR + 1, // ||=
+            ASSIGN_BITXOR = ASSIGN_LOGICAL_OR + 1, // ^=
+            ASSIGN_BITAND = ASSIGN_BITXOR + 1, // |=
+            ASSIGN_LOGICAL_AND = ASSIGN_BITAND + 1, // &&=
+            ASSIGN_LSH = ASSIGN_LOGICAL_AND + 1, // <<=
+            ASSIGN_RSH = ASSIGN_LSH + 1, // >>=
+            ASSIGN_URSH = ASSIGN_RSH + 1, // >>>=
+            ASSIGN_ADD = ASSIGN_URSH + 1, // +=
+            ASSIGN_SUB = ASSIGN_ADD + 1, // -=
+            ASSIGN_MUL = ASSIGN_SUB + 1, // *=
+            ASSIGN_DIV = ASSIGN_MUL + 1, // /=
+            ASSIGN_MOD = ASSIGN_DIV + 1, // %=
+            ASSIGN_EXP = ASSIGN_MOD + 1; // **=
     public static final int FIRST_ASSIGN = ASSIGN,
             LAST_ASSIGN = ASSIGN_EXP,
-            HOOK = 106, // conditional (?:)
-            COLON = 107,
-            OR = 108, // logical or (||)
-            AND = 109, // logical and (&&)
-            INC = 110, // increment/decrement (++ --)
-            DEC = 111,
-            DOT = 112, // member operator (.)
-            FUNCTION = 113, // function keyword
+            HOOK = LAST_ASSIGN + 1, // conditional (?:)
+            COLON = HOOK + 1,
+            OR = COLON + 1, // logical or (||)
+            AND = OR + 1, // logical and (&&)
+            INC = AND + 1, // increment/decrement (++ --)
+            DEC = INC + 1,
+            DOT = DEC + 1, // member operator (.)
+            FUNCTION = DOT + 1, // function keyword
             CLASS = FUNCTION + 1,
             EXTENDS = CLASS + 1,
             STATIC = EXTENDS + 1,
@@ -445,10 +447,14 @@ public class Token {
                 return "ASSIGN";
             case ASSIGN_BITOR:
                 return "ASSIGN_BITOR";
+            case ASSIGN_LOGICAL_OR:
+                return "ASSIGN_LOGICAL_OR";
             case ASSIGN_BITXOR:
                 return "ASSIGN_BITXOR";
             case ASSIGN_BITAND:
                 return "ASSIGN_BITAND";
+            case ASSIGN_LOGICAL_AND:
+                return "ASSIGN_LOGICAL_AND";
             case ASSIGN_LSH:
                 return "ASSIGN_LSH";
             case ASSIGN_RSH:
