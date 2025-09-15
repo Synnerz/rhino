@@ -883,7 +883,7 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
     }
 
     @Override
-    protected void defineOwnProperty(
+    protected boolean defineOwnProperty(
             Context cx, Object key, ScriptableObject desc, boolean checkValid) {
         if (key instanceof CharSequence) {
             String name = key.toString();
@@ -904,9 +904,13 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
                             setInstanceIdValue(id, value);
                         }
                     }
-                    attr = applyDescriptorToAttributeBitset(attr, desc);
+                    attr = applyDescriptorToAttributeBitset(
+                            attr,
+                            getProperty(desc, "enumerable"),
+                            getProperty(desc, "writable"),
+                            getProperty(desc, "configurable"));
                     setAttributes(name, attr);
-                    return;
+                    return true;
                 }
             }
             if (prototypeValues != null) {
@@ -927,7 +931,12 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
                             }
                         }
                         prototypeValues.setAttributes(
-                                id, applyDescriptorToAttributeBitset(attr, desc));
+                                id,
+                                applyDescriptorToAttributeBitset(
+                                        attr,
+                                        getProperty(desc, "enumerable"),
+                                        getProperty(desc, "writable"),
+                                        getProperty(desc, "configurable")));
 
                         // Handle the regular slot that was created if this property was previously
                         // replaced
@@ -936,12 +945,12 @@ public abstract class IdScriptableObject extends ScriptableObject implements IdF
                             super.delete(name);
                         }
 
-                        return;
+                        return true;
                     }
                 }
             }
         }
-        super.defineOwnProperty(cx, key, desc, checkValid);
+        return super.defineOwnProperty(cx, key, desc, checkValid);
     }
 
     @Override

@@ -1594,9 +1594,9 @@ public abstract class ScriptableObject
      * @param id the name/index of the property
      * @param desc the new property descriptor, as described in 8.6.1
      */
-    public void defineOwnProperty(Context cx, Object id, ScriptableObject desc) {
+    public boolean defineOwnProperty(Context cx, Object id, ScriptableObject desc) {
         checkPropertyDefinition(desc);
-        defineOwnProperty(cx, id, desc, true);
+        return defineOwnProperty(cx, id, desc, true);
     }
 
     /**
@@ -1609,7 +1609,7 @@ public abstract class ScriptableObject
      * @param desc the new property descriptor, as described in 8.6.1
      * @param checkValid whether to perform validity checks
      */
-    protected void defineOwnProperty(
+    protected boolean defineOwnProperty(
             Context cx, Object id, ScriptableObject desc, boolean checkValid) {
 
         Object key = null;
@@ -1625,6 +1625,16 @@ public abstract class ScriptableObject
             }
         }
 
+        // this property lookup cannot happen from inside slotMap.compute lambda
+        // as it risks causing a deadlock if ThreadSafeSlotMapContainer is used
+        // and `this` is in prototype chain of `desc`
+        Object enumerable = getProperty(desc, "enumerable");
+        Object writable = getProperty(desc, "writable");
+        Object configurable = getProperty(desc, "configurable");
+        Object getter = getProperty(desc, "get");
+        Object setter = getProperty(desc, "set");
+        Object value = getProperty(desc, "value");
+
         Slot slot = slotMap.query(key, index);
         boolean isNew = slot == null;
 
@@ -1638,9 +1648,17 @@ public abstract class ScriptableObject
 
         if (slot == null) {
             slot = slotMap.modify(key, index, 0);
-            attributes = applyDescriptorToAttributeBitset(DONTENUM | READONLY | PERMANENT, desc);
+            attributes = applyDescriptorToAttributeBitset(
+                    DONTENUM | READONLY | PERMANENT,
+                    enumerable,
+                    writable,
+                    configurable);
         } else {
-            attributes = applyDescriptorToAttributeBitset(slot.getAttributes(), desc);
+            attributes = applyDescriptorToAttributeBitset(
+                    slot.getAttributes(),
+                    enumerable,
+                    writable,
+                    configurable);
         }
 
         if (isAccessor) {
@@ -1653,11 +1671,9 @@ public abstract class ScriptableObject
                 slotMap.replace(slot, fslot);
             }
 
-            Object getter = getProperty(desc, "get");
             if (getter != NOT_FOUND) {
                 fslot.getter = new AccessorSlot.FunctionGetter(getter);
             }
-            Object setter = getProperty(desc, "set");
             if (setter != NOT_FOUND) {
                 fslot.setter = new AccessorSlot.FunctionSetter(setter);
             }
@@ -1670,7 +1686,6 @@ public abstract class ScriptableObject
                 slotMap.replace(slot, newSlot);
                 slot = newSlot;
             }
-            Object value = getProperty(desc, "value");
             if (value != NOT_FOUND) {
                 slot.value = value;
             } else if (isNew) {
@@ -1678,6 +1693,7 @@ public abstract class ScriptableObject
             }
             slot.setAttributes(attributes);
         }
+        return true;
     }
 
     /**
@@ -1807,8 +1823,8 @@ public abstract class ScriptableObject
         return ScriptRuntime.shallowEq(currentValue, newValue);
     }
 
-    protected int applyDescriptorToAttributeBitset(int attributes, ScriptableObject desc) {
-        Object enumerable = getProperty(desc, "enumerable");
+    protected int applyDescriptorToAttributeBitset(
+            int attributes, Object enumerable, Object writable, Object configurable) {
         if (enumerable != NOT_FOUND) {
             attributes =
                     ScriptRuntime.toBoolean(enumerable)
@@ -1816,7 +1832,6 @@ public abstract class ScriptableObject
                             : attributes | DONTENUM;
         }
 
-        Object writable = getProperty(desc, "writable");
         if (writable != NOT_FOUND) {
             attributes =
                     ScriptRuntime.toBoolean(writable)
@@ -1824,7 +1839,6 @@ public abstract class ScriptableObject
                             : attributes | READONLY;
         }
 
-        Object configurable = getProperty(desc, "configurable");
         if (configurable != NOT_FOUND) {
             attributes =
                     ScriptRuntime.toBoolean(configurable)
@@ -1861,8 +1875,15 @@ public abstract class ScriptableObject
      * @param desc a property descriptor
      * @return true if this is a generic descriptor.
      */
-    protected boolean isGenericDescriptor(ScriptableObject desc) {
+    protected static boolean isGenericDescriptor(ScriptableObject desc) {
         return !isDataDescriptor(desc) && !isAccessorDescriptor(desc);
+    }
+
+    protected static ScriptableObject ensureScriptableObjectButNotSymbol(Object arg) {
+        if (arg instanceof Symbol) {
+            throw ScriptRuntime.typeErrorById("msg.arg.not.object", ScriptRuntime.typeof(arg));
+        }
+        return ensureScriptableObject(arg);
     }
 
     protected static Scriptable ensureScriptable(Object arg) {
@@ -1992,8 +2013,9 @@ public abstract class ScriptableObject
         return isExtensible;
     }
 
-    public void preventExtensions() {
+    public boolean preventExtensions() {
         isExtensible = false;
+        return true;
     }
 
     /**
@@ -2337,6 +2359,15 @@ public abstract class ScriptableObject
         if (base == null) return true;
         base.delete(index);
         return !base.has(index, obj);
+    }
+
+    /** A version of deleteProperty for properties with Symbol keys. */
+    public static boolean deleteProperty(Scriptable obj, Symbol key) {
+        Scriptable base = getBase(obj, key);
+        if (base == null) return true;
+        SymbolScriptable scriptable = ensureSymbolScriptable(base);
+        scriptable.delete(key);
+        return !scriptable.has(key, obj);
     }
 
     /**
