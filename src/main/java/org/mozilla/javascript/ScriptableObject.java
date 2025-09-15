@@ -1628,12 +1628,25 @@ public abstract class ScriptableObject
         // this property lookup cannot happen from inside slotMap.compute lambda
         // as it risks causing a deadlock if ThreadSafeSlotMapContainer is used
         // and `this` is in prototype chain of `desc`
-        Object enumerable = getProperty(desc, "enumerable");
-        Object writable = getProperty(desc, "writable");
-        Object configurable = getProperty(desc, "configurable");
-        Object getter = getProperty(desc, "get");
-        Object setter = getProperty(desc, "set");
-        Object value = getProperty(desc, "value");
+        final Object enumerable = getProperty(desc, "enumerable");
+        final Object writable = getProperty(desc, "writable");
+        final Object configurable = getProperty(desc, "configurable");
+        final boolean accessorDescriptor = isAccessorDescriptor(desc);
+
+        // getProperty() processes the whole prototype chain,
+        // we should do this only if we need the result later
+        final Object getter;
+        final Object setter;
+        final Object value;
+        if (accessorDescriptor) {
+            getter = getProperty(desc, "get");
+            setter = getProperty(desc, "set");
+            value = null;
+        } else {
+            getter = null;
+            setter = null;
+            value = getProperty(desc, "value");
+        }
 
         Slot slot = slotMap.query(key, index);
         boolean isNew = slot == null;
