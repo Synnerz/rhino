@@ -1725,6 +1725,28 @@ public class ScriptRuntime {
         return (long) Math.min(len, NativeNumber.MAX_SAFE_INTEGER);
     }
 
+    public static long toLength(Object value) {
+        double len = toInteger(value);
+        if (len <= 0.0) {
+            return 0;
+        }
+        return (long) Math.min(len, NativeNumber.MAX_SAFE_INTEGER);
+    }
+
+    /** Implements the abstract operation AdvanceStringIndex. See ECMAScript spec 22.2.7.3 */
+    public static long advanceStringIndex(String string, long index, boolean unicode) {
+        if (index >= NativeNumber.MAX_SAFE_INTEGER) Kit.codeBug();
+        if (!unicode) {
+            return index + 1;
+        }
+        int length = string.length();
+        if (index + 1 > length) {
+            return index + 1;
+        }
+        int cp = string.codePointAt((int) index);
+        return index + Character.charCount(cp);
+    }
+
     /** See ECMA 9.5. */
     public static int toInt32(Object val) {
         // short circuit for common integer values
@@ -1897,7 +1919,7 @@ public class ScriptRuntime {
         return ScriptableObject.getProperty(scope, id);
     }
 
-    static Function getExistingCtor(Context cx, Scriptable scope, String constructorName) {
+    public static Function getExistingCtor(Context cx, Scriptable scope, String constructorName) {
         Object ctorVal = ScriptableObject.getProperty(scope, constructorName);
         if (ctorVal instanceof Function) {
             return (Function) ctorVal;
