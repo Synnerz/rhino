@@ -1,21 +1,95 @@
 package org.mozilla.javascript;
 
-public class NativeReflect extends IdScriptableObject {
-    private static final Object REFLECT_TAG = "Reflect";
+import java.util.ArrayList;
+import java.util.List;
 
-    static void init(Scriptable scope, boolean sealed) {
-        NativeReflect obj = new NativeReflect();
-        obj.activatePrototypeMap(LAST_METHOD_ID);
-        obj.setPrototype(getObjectPrototype(scope));
-        obj.setParentScope(scope);
-        if (sealed)
-            obj.sealObject();
-        ScriptableObject.defineProperty(scope, "Reflect", obj, ScriptableObject.DONTENUM);
+/**
+ * This class implements the Reflect object.
+ *
+ * @author Ronald Brill
+ */
+final class NativeReflect extends ScriptableObject {
+    private static final long serialVersionUID = 2920773905356325445L;
+
+    private static final String REFLECT_TAG = "Reflect";
+
+    public static void init(Context cx, Scriptable scope, boolean sealed) {
+        NativeReflect reflect = new NativeReflect();
+        reflect.setPrototype(getObjectPrototype(scope));
+        reflect.setParentScope(scope);
+
+        reflect.defineProperty(
+                scope, "apply", 3, NativeReflect::apply, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope, "construct", 2, NativeReflect::construct, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "defineProperty",
+                3,
+                NativeReflect::defineProperty,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "deleteProperty",
+                2,
+                NativeReflect::deleteProperty,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(scope, "get", 2, NativeReflect::get, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "getOwnPropertyDescriptor",
+                2,
+                NativeReflect::getOwnPropertyDescriptor,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "getPrototypeOf",
+                1,
+                NativeReflect::getPrototypeOf,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(scope, "has", 2, NativeReflect::has, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "isExtensible",
+                1,
+                NativeReflect::isExtensible,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope, "ownKeys", 1, NativeReflect::ownKeys, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "preventExtensions",
+                1,
+                NativeReflect::preventExtensions,
+                DONTENUM,
+                DONTENUM | READONLY);
+        reflect.defineProperty(scope, "set", 3, NativeReflect::set, DONTENUM, DONTENUM | READONLY);
+        reflect.defineProperty(
+                scope,
+                "setPrototypeOf",
+                2,
+                NativeReflect::setPrototypeOf,
+                DONTENUM,
+                DONTENUM | READONLY);
+
+        reflect.defineProperty(SymbolKey.TO_STRING_TAG, REFLECT_TAG, DONTENUM | READONLY);
+
+        ScriptableObject.defineProperty(scope, REFLECT_TAG, reflect, DONTENUM);
+        if (sealed) {
+            reflect.sealObject();
+        }
     }
+
+    private NativeReflect() {}
 
     @Override
     public String getClassName() {
-        return (String) REFLECT_TAG;
+        return "Reflect";
     }
 
     @Override
@@ -28,392 +102,324 @@ public class NativeReflect extends IdScriptableObject {
 
     }
 
-    @Override
-    protected void initPrototypeId(int id) {
-        String name;
-        int arity;
-
-        switch (id) {
-            case Id_apply:
-                arity = 3;
-                name = "apply";
-                break;
-            case Id_construct:
-                arity = 3;
-                name = "construct";
-                break;
-            case Id_defineProperty:
-                arity = 3;
-                name = "defineProperty";
-                break;
-            case Id_deleteProperty:
-                arity = 2;
-                name = "deleteProperty";
-                break;
-            case Id_get:
-                arity = 3;
-                name = "get";
-                break;
-            case Id_getOwnPropertyDescriptor:
-                arity = 2;
-                name = "getOwnPropertyDescriptor";
-                break;
-            case Id_getPrototypeOf:
-                arity = 1;
-                name = "getPrototypeOf";
-                break;
-            case Id_has:
-                arity = 2;
-                name = "has";
-                break;
-            case Id_isExtensible:
-                arity = 1;
-                name = "isExtensible";
-                break;
-            case Id_ownKeys:
-                arity = 1;
-                name = "ownKeys";
-                break;
-            case Id_preventExtensions:
-                arity = 1;
-                name = "preventExtensions";
-                break;
-            case Id_set:
-                arity = 4;
-                name = "set";
-                break;
-            case Id_setPrototypeOf:
-                arity = 2;
-                name = "setPrototypeOf";
-                break;
-            case Id_isCallable:
-                arity = 1;
-                name = "isCallable";
-                break;
-            case Id_isConstructor:
-                arity = 1;
-                name = "isConstructor";
-                break;
-            default:
-                throw new IllegalStateException(String.valueOf(id));
+    private static Object apply(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        if (args.length < 3) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.method.missing.parameter",
+                    "Reflect.apply",
+                    "3",
+                    Integer.toString(args.length));
         }
 
-        initPrototypeMethod(REFLECT_TAG, id, name, arity);
+        Scriptable callable = ScriptableObject.ensureScriptable(args[0]);
+
+        if (args[1] instanceof Scriptable) {
+            thisObj = (Scriptable) args[1];
+        } else if (ScriptRuntime.isPrimitive(args[1])) {
+            thisObj = cx.newObject(scope, "Object", new Object[] {args[1]});
+        }
+
+        if (ScriptRuntime.isSymbol(args[2])) {
+            throw ScriptRuntime.typeErrorById("msg.arg.not.object", ScriptRuntime.typeof(args[2]));
+        }
+        ScriptableObject argumentsList = ScriptableObject.ensureScriptableObject(args[2]);
+
+        return ScriptRuntime.applyOrCall(
+                true, cx, scope, callable, new Object[] {thisObj, argumentsList});
     }
 
-    @Override
-    public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
-        if (!f.hasTag(REFLECT_TAG)) {
-            return super.execIdCall(f, cx, scope, thisObj, args);
+    /** see https://262.ecma-international.org/12.0/#sec-reflect.construct */
+    private static Scriptable construct(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        /*
+         * 1. If IsConstructor(target) is false, throw a TypeError exception.
+         * 2. If newTarget is not present, set newTarget to target.
+         * 3. Else if IsConstructor(newTarget) is false, throw a TypeError exception.
+         * 4. Let args be ? CreateListFromArrayLike(argumentsList).
+         * 5. Return ? Construct(target, args, newTarget).
+         */
+        if (args.length < 1) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.method.missing.parameter",
+                    "Reflect.construct",
+                    "3",
+                    Integer.toString(args.length));
         }
 
-        switch (f.methodId()) {
-            case Id_apply:
-                return js_apply(args, cx, scope);
-            case Id_construct:
-                return js_construct(args, cx, scope);
-            case Id_defineProperty:
-                return js_defineProperty(args, cx);
-            case Id_deleteProperty:
-                return js_deleteProperty(args, cx, scope);
-            case Id_get:
-                return js_get(args);
-            case Id_getOwnPropertyDescriptor:
-                return js_getOwnPropertyDescriptor(args, cx, scope);
-            case Id_getPrototypeOf:
-                return js_getPrototypeOf(args, cx, scope);
-            case Id_has:
-                return js_has(args, cx);
-            case Id_isExtensible:
-                return js_isExtensible(args, cx, scope);
-            case Id_ownKeys:
-                return js_ownKeys(args, cx, scope);
-            case Id_preventExtensions:
-                return js_preventExtensions(args);
-            case Id_set:
-                return js_set(args);
-            case Id_setPrototypeOf:
-                return js_setPrototypeOf(args, cx, scope);
-            case Id_isCallable:
-                return args.length > 0 && args[0] instanceof BaseFunction && ((BaseFunction) args[0]).isCallable();
-            case Id_isConstructor:
-                return args.length > 0 && args[0] instanceof BaseFunction && ((BaseFunction) args[0]).isConstructable();
-            default:
-                return null;
-        }
-    }
-
-    private Object js_apply(Object[] args, Context cx, Scriptable scope) {
-        if (args.length > 0 && !(args[0] instanceof Function)) {
-            throw ScriptRuntime.typeError4("msg.reflect.bad.args", "target", "Reflect.apply", "function", args[0].getClass().getSimpleName());
-        } else if (args.length > 2 && !(args[2] instanceof NativeArray)) {
-            throw ScriptRuntime.typeError4("msg.reflect.bad.args", "argumentsList", "Reflect.apply", "array", args[2].getClass().getSimpleName());
+        if (!AbstractEcmaObjectOperations.isConstructor(cx, args[0])) {
+            throw ScriptRuntime.typeErrorById("msg.not.ctor", ScriptRuntime.typeof(args[0]));
         }
 
-        Function target = (Function) args[0];
-        Scriptable thisObj = args[1] == Undefined.instance ? null : ScriptRuntime.toObject(cx, scope, args[1]);
-        NativeArray targetArgs = (NativeArray) args[2];
-
-        return target.call(cx, scope, thisObj, targetArgs.toArray());
-    }
-
-    private Object js_construct(Object[] args, Context cx, Scriptable scope) {
-        if (args.length < 1 || !(args[0] instanceof Function)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
-        } else if (args.length < 2 || !(args[1] instanceof Scriptable) || !(ScriptRuntime.isArrayLike((Scriptable) args[1]))) {
-            throw ScriptRuntime.typeError("Expected argumentsList to be an array");
+        Constructable ctor = (Constructable) args[0];
+        if (args.length < 2) {
+            return ctor.construct(cx, scope, ScriptRuntime.emptyArgs);
         }
 
-        Function target = (Function) args[0];
-        Object[] argumentsList = ScriptRuntime.getApplyArguments(cx, args[1]);
-        Function newTarget = null;
+        if (args.length > 2 && !AbstractEcmaObjectOperations.isConstructor(cx, args[2])) {
+            throw ScriptRuntime.typeErrorById("msg.not.ctor", ScriptRuntime.typeof(args[2]));
+        }
 
+        Object[] callArgs = ScriptRuntime.getApplyArguments(cx, args[1]);
+
+        Object newTargetPrototype = null;
         if (args.length > 2) {
-            newTarget = (Function) args[2];
-        }
+            Scriptable newTarget = ScriptableObject.ensureScriptable(args[2]);
 
-        if (target instanceof BaseFunction) {
-            ((BaseFunction) target).setForcedNewTarget(newTarget);
-        }
-
-        Scriptable val = ScriptRuntime.newObject(target, cx, scope, argumentsList);
-
-        if (newTarget != null) {
-            Scriptable obj = ScriptRuntime.newObject(newTarget, cx, scope, new Object[0]);
-            val.setPrototype(obj.getPrototype());
-        }
-
-        return val;
-    }
-
-    private boolean js_defineProperty(Object[] args, Context cx) {
-        ScriptableObject target = ensureScriptableObject(args.length > 0 ? args[0] : Undefined.instance);
-        Object propKey = args[1];
-        ScriptableObject desc = ensureScriptableObject(args.length > 2 ? args[2] : Undefined.instance);
-
-        try {
-            target.defineOwnProperty(cx, propKey, desc);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private boolean js_deleteProperty(Object[] args, Context cx, Scriptable scope) {
-        ScriptableObject target = ensureScriptableObject(args.length > 0 ? args[0] : Undefined.instance);
-        Object propKey = args[1];
-
-        try {
-            Object res = ScriptRuntime.delete(target, propKey, cx, scope, true);
-
-            if (res instanceof Boolean) {
-                return (boolean) res;
+            if (newTarget instanceof BaseFunction) {
+                newTargetPrototype = ((BaseFunction) newTarget).getPrototypeProperty();
             } else {
-                throw Kit.codeBug();
+                newTargetPrototype = newTarget.get("prototype", newTarget);
             }
-        } catch (Exception e) {
+
+            if (!(newTargetPrototype instanceof Scriptable)
+                    || ScriptRuntime.isSymbol(newTargetPrototype)
+                    || Undefined.isUndefined(newTargetPrototype)) {
+                newTargetPrototype = null;
+            }
+        }
+
+        // our Constructable interface does not support the newTarget;
+        // therefore we use a cloned implementation that fixes
+        // the prototype before executing call(..).
+        if (ctor instanceof BaseFunction && newTargetPrototype != null) {
+            BaseFunction ctorBaseFunction = (BaseFunction) ctor;
+            Scriptable result = ctorBaseFunction.createObject(cx, scope);
+            if (result != null) {
+                result.setPrototype((Scriptable) newTargetPrototype);
+
+                Object val = ctorBaseFunction.call(cx, scope, result, callArgs);
+                if (val instanceof Scriptable) {
+                    return (Scriptable) val;
+                }
+
+                return result;
+            }
+        }
+
+        Scriptable newScriptable = ctor.construct(cx, scope, callArgs);
+        if (newTargetPrototype != null) {
+            newScriptable.setPrototype((Scriptable) newTargetPrototype);
+        }
+
+        return newScriptable;
+    }
+
+    private static Object defineProperty(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        if (args.length < 3) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.method.missing.parameter",
+                    "Reflect.defineProperty",
+                    "3",
+                    Integer.toString(args.length));
+        }
+
+        ScriptableObject target = checkTarget(args);
+        ScriptableObject desc = ScriptableObject.ensureScriptableObject(args[2]);
+
+        try {
+            return target.defineOwnProperty(cx, args[1], desc);
+        } catch (EcmaError e) {
             return false;
         }
     }
 
-    private Object js_get(Object[] args) {
-        if (args.length < 1 || !(args[0] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
+    private static Object deleteProperty(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        if (args.length > 1) {
+            if (ScriptRuntime.isSymbol(args[1])) {
+                return ScriptableObject.deleteProperty(target, (Symbol) args[1]);
+            }
+            return ScriptableObject.deleteProperty(target, ScriptRuntime.toString(args[1]));
         }
 
-        Scriptable target = ensureScriptable(args[0]);
-        Object key = args.length > 1 ? args[1] : Undefined.instance;
+        return false;
+    }
 
-        if (key instanceof String) {
-            return ScriptableObject.getProperty(target, (String) key);
-        } else if (key instanceof Integer) {
-            return ScriptableObject.getProperty(target, (int) key);
-        } else if (key instanceof Double) {
-            return ScriptableObject.getProperty(target, ((Double) key).intValue());
+    private static Object get(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        if (args.length > 1) {
+            if (ScriptRuntime.isSymbol(args[1])) {
+                Object prop = ScriptableObject.getProperty(target, (Symbol) args[1]);
+                return prop == Scriptable.NOT_FOUND ? Undefined.SCRIPTABLE_UNDEFINED : prop;
+            }
+            if (args[1] instanceof Number) {
+                Object prop = ScriptableObject.getProperty(target, ScriptRuntime.toIndex(args[1]));
+                return prop == Scriptable.NOT_FOUND ? Undefined.SCRIPTABLE_UNDEFINED : prop;
+            }
+
+            Object prop = ScriptableObject.getProperty(target, ScriptRuntime.toString(args[1]));
+            return prop == Scriptable.NOT_FOUND ? Undefined.SCRIPTABLE_UNDEFINED : prop;
+        }
+        return Undefined.SCRIPTABLE_UNDEFINED;
+    }
+
+    private static Scriptable getOwnPropertyDescriptor(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        if (args.length > 1) {
+            if (ScriptRuntime.isSymbol(args[1])) {
+                ScriptableObject desc = target.getOwnPropertyDescriptor(cx, args[1]);
+                return desc == null ? Undefined.SCRIPTABLE_UNDEFINED : desc;
+            }
+
+            ScriptableObject desc =
+                    target.getOwnPropertyDescriptor(cx, ScriptRuntime.toString(args[1]));
+            return desc == null ? Undefined.SCRIPTABLE_UNDEFINED : desc;
+        }
+        return Undefined.SCRIPTABLE_UNDEFINED;
+    }
+
+    private static Scriptable getPrototypeOf(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        return target.getPrototype();
+    }
+
+    private static Object has(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        if (args.length > 1) {
+            if (ScriptRuntime.isSymbol(args[1])) {
+                return ScriptableObject.hasProperty(target, (Symbol) args[1]);
+            }
+
+            return ScriptableObject.hasProperty(target, ScriptRuntime.toString(args[1]));
+        }
+        return false;
+    }
+
+    private static Object isExtensible(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+        return target.isExtensible();
+    }
+
+    private static Scriptable ownKeys(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        final List<Object> strings = new ArrayList<>();
+        final List<Object> symbols = new ArrayList<>();
+
+        for (Object o : target.getIds(true, true)) {
+            if (o instanceof Symbol) {
+                symbols.add(o);
+            } else {
+                strings.add(ScriptRuntime.toString(o));
+            }
+        }
+
+        Object[] keys = new Object[strings.size() + symbols.size()];
+        System.arraycopy(strings.toArray(), 0, keys, 0, strings.size());
+        System.arraycopy(symbols.toArray(), 0, keys, strings.size(), symbols.size());
+
+        return cx.newArray(scope, keys);
+    }
+
+    private static Object preventExtensions(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+
+        return target.preventExtensions();
+    }
+
+    private static Object set(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        ScriptableObject target = checkTarget(args);
+        if (args.length < 2) {
+            return true;
+        }
+
+        ScriptableObject receiver =
+                args.length > 3 ? ScriptableObject.ensureScriptableObject(args[3]) : target;
+        if (receiver != target) {
+            ScriptableObject descriptor = target.getOwnPropertyDescriptor(cx, args[1]);
+            if (descriptor != null) {
+                Object setter = descriptor.get("set");
+                if (setter != null && setter != NOT_FOUND) {
+                    ((Function) setter).call(cx, scope, receiver, new Object[] {args[2]});
+                    return true;
+                }
+
+                if (Boolean.FALSE.equals(descriptor.get("configurable"))) {
+                    return false;
+                }
+            }
+        }
+
+        if (ScriptRuntime.isSymbol(args[1])) {
+            receiver.put((Symbol) args[1], receiver, args[2]);
+        } else if (args[1] instanceof Double) {
+            receiver.put(ScriptRuntime.toIndex(args[1]), receiver, args[2]);
         } else {
-            throw Kit.codeBug();
-        }
-    }
-
-    private Object js_getOwnPropertyDescriptor(Object[] args, Context cx, Scriptable scope) {
-        Object arg = args.length < 1 ? Undefined.instance : args[0];
-        // TODO(norris): There's a deeper issue here if
-        // arg instanceof Scriptable. Should we create a new
-        // interface to admit the new ECMAScript 5 operations?
-        Scriptable s = NativeObject.getCompatibleObject(cx, scope, arg);
-        ScriptableObject obj = ensureScriptableObject(s);
-        Object nameArg = args.length < 2 ? Undefined.instance : args[1];
-        Scriptable desc = obj.getOwnPropertyDescriptor(cx, nameArg);
-        return desc == null ? Undefined.instance : desc;
-    }
-
-    private Object js_getPrototypeOf(Object[] args, Context cx, Scriptable scope) {
-        if (args.length < 1) return null;
-        return NativeObject.getCompatibleObject(cx, scope, args[0]).getPrototype();
-    }
-
-    private boolean js_has(Object[] args, Context cx) {
-        if (args.length < 2) Kit.codeBug(); // TODO: Error msg
-
-        return ScriptRuntime.in(args[1], args[0], cx);
-    }
-
-    private boolean js_isExtensible(Object[] args, Context cx, Scriptable scope) {
-        if (args.length < 1 || !(args[0] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
+            receiver.put(ScriptRuntime.toString(args[1]), receiver, args[2]);
         }
 
-        ScriptableObject obj = (ScriptableObject) args[0];
-        return obj.isExtensible();
-    }
-
-    private Object js_ownKeys(Object[] args, Context cx, Scriptable scope) {
-        if (args.length < 1 || !(args[0] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
-        }
-
-        ScriptableObject obj = ensureScriptableObject(NativeObject.getCompatibleObject(cx, scope, args[0]));
-        Object[] ownKeys = obj.getIds(true, true);
-
-        for (int i = 0; i < ownKeys.length; i++) {
-            Object key = ownKeys[i];
-
-            if (!(key instanceof Symbol)) {
-                ownKeys[i] = ScriptRuntime.toString(ownKeys[i]);
-            }
-        }
-        return cx.newArray(scope, ownKeys);
-    }
-
-    private Object js_preventExtensions(Object[] args) {
-        if (args.length < 1 || !(args[0] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
-        }
-
-        try {
-            ScriptableObject obj = ensureScriptableObject(args[0]);
-            obj.preventExtensions();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private boolean js_set(Object[] args) {
-        if (args.length < 1 || !(args[0] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.not.obj", args.length < 1 ? Undefined.instance : args[0]);
-        }
-
-        Scriptable target = ensureScriptable(args[0]);
-        Object key = args.length > 1 ? args[1] : Undefined.instance;
-        Object value = args.length > 2 ? args[2] : Undefined.instance;
-
-        try {
-            if (key instanceof String) {
-                ScriptableObject.putProperty(target, (String) key, value);
-            } else if (key instanceof Integer) {
-                ScriptableObject.putProperty(target, (Integer) key, value);
-            } else if (key instanceof Double) {
-                ScriptableObject.putProperty(target, ((Double) key).intValue(), value);
-            } else if (key instanceof Undefined) {
-                ScriptableObject.putProperty(target, "undefined", value);
-            } else {
-                return false;
-            }
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private Object js_setPrototypeOf(Object[] args, Context cx, Scriptable scope) {
-        if (args.length < 2 || !(args[1] == null || args[1] instanceof ScriptableObject)) {
-            throw ScriptRuntime.typeError1("msg.arg.not.object", ScriptRuntime.typeof(args.length < 2 ? Undefined.instance : args[1]));
-        }
-
-        Object target = args[0];
-        ScriptableObject key = (ScriptableObject) args[1];
-
-        if (key instanceof Symbol) {
-            throw ScriptRuntime.typeError1("msg.arg.not.object", ScriptRuntime.typeof(target));
-        }
-
-        if (!(target instanceof ScriptableObject)) {
-            return target;
-        }
-
-        ScriptableObject scriptTarget = (ScriptableObject) target;
-        if (!scriptTarget.isExtensible()) {
-            return false;
-        }
-
-        Scriptable prototypeProto = key;
-        while (prototypeProto != null) {
-            if (prototypeProto == scriptTarget) {
-                return false;
-            }
-            prototypeProto = prototypeProto.getPrototype();
-        }
-
-        scriptTarget.setPrototype(key);
         return true;
     }
 
-// #string_id_map#
-
-    @Override
-    protected int findPrototypeId(String s) {
-        int id;
-// #generated# Last update: 2019-12-29 15:46:17 PST
-        L0: { id = 0; String X = null; int c;
-            L: switch (s.length()) {
-            case 3: c=s.charAt(0);
-                if (c=='g') { if (s.charAt(2)=='t' && s.charAt(1)=='e') {id=Id_get; break L0;} }
-                else if (c=='h') { if (s.charAt(2)=='s' && s.charAt(1)=='a') {id=Id_has; break L0;} }
-                else if (c=='s') { if (s.charAt(2)=='t' && s.charAt(1)=='e') {id=Id_set; break L0;} }
-                break L;
-            case 5: X="apply";id=Id_apply; break L;
-            case 7: X="ownKeys";id=Id_ownKeys; break L;
-            case 9: X="construct";id=Id_construct; break L;
-            case 10: X="isCallable";id=Id_isCallable; break L;
-            case 12: X="isExtensible";id=Id_isExtensible; break L;
-            case 13: X="isConstructor";id=Id_isConstructor; break L;
-            case 14: c=s.charAt(0);
-                if (c=='d') {
-                    c=s.charAt(2);
-                    if (c=='f') { X="defineProperty";id=Id_defineProperty; }
-                    else if (c=='l') { X="deleteProperty";id=Id_deleteProperty; }
-                }
-                else if (c=='g') { X="getPrototypeOf";id=Id_getPrototypeOf; }
-                else if (c=='s') { X="setPrototypeOf";id=Id_setPrototypeOf; }
-                break L;
-            case 17: X="preventExtensions";id=Id_preventExtensions; break L;
-            case 24: X="getOwnPropertyDescriptor";id=Id_getOwnPropertyDescriptor; break L;
-            }
-            if (X!=null && X!=s && !X.equals(s)) id = 0;
-            break L0;
+    private static Object setPrototypeOf(
+            Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+        if (args.length < 2) {
+            throw ScriptRuntime.typeErrorById(
+                    "msg.method.missing.parameter",
+                    "Reflect.js_setPrototypeOf",
+                    "2",
+                    Integer.toString(args.length));
         }
-// #/generated#
-        return id;
+
+        ScriptableObject target = checkTarget(args);
+
+        if (target.getPrototype() == args[1]) {
+            return true;
+        }
+
+        if (!target.isExtensible()) {
+            return false;
+        }
+
+        if (args[1] == null) {
+            target.setPrototype(null);
+            return true;
+        }
+
+        if (ScriptRuntime.isSymbol(args[1])) {
+            throw ScriptRuntime.typeErrorById("msg.arg.not.object", ScriptRuntime.typeof(args[0]));
+        }
+
+        ScriptableObject proto = ScriptableObject.ensureScriptableObject(args[1]);
+        if (target.getPrototype() == proto) {
+            return true;
+        }
+
+        // avoid cycles
+        Scriptable p = proto;
+        while (p != null) {
+            if (target == p) {
+                return false;
+            }
+            p = p.getPrototype();
+        }
+
+        target.setPrototype(proto);
+        return true;
     }
 
-    private static final int
-            Id_apply = 1,
-            Id_construct = 2,
-            Id_defineProperty = 3,
-            Id_deleteProperty = 4,
-            Id_get = 5,
-            Id_getOwnPropertyDescriptor = 6,
-            Id_getPrototypeOf = 7,
-            Id_has = 8,
-            Id_isExtensible = 9,
-            Id_ownKeys = 10,
-            Id_preventExtensions = 11,
-            Id_set = 12,
-            Id_setPrototypeOf = 13,
-            Id_isCallable = 14,
-            Id_isConstructor = 15,
-            LAST_METHOD_ID = Id_isConstructor;
+    private static ScriptableObject checkTarget(Object[] args) {
+        if (args.length == 0 || args[0] == null || args[0] == Undefined.instance) {
+            Object argument = args.length == 0 ? Undefined.instance : args[0];
+            throw ScriptRuntime.typeErrorById(
+                    "msg.no.properties", ScriptRuntime.toString(argument));
+        }
 
-// #/string_id_map#
+        if (ScriptRuntime.isSymbol(args[0])) {
+            throw ScriptRuntime.typeErrorById("msg.arg.not.object", ScriptRuntime.typeof(args[0]));
+        }
+        return ScriptableObject.ensureScriptableObject(args[0]);
+    }
 }

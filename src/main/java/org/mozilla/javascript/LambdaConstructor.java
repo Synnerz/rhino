@@ -30,7 +30,7 @@ public class LambdaConstructor extends LambdaFunction {
     public static final int CONSTRUCTOR_DEFAULT = CONSTRUCTOR_FUNCTION | CONSTRUCTOR_NEW;
 
     // Lambdas should not be serialized.
-    private final transient Constructable targetConstructor;
+    protected final transient Constructable targetConstructor;
     private final int flags;
 
     /**
@@ -76,6 +76,10 @@ public class LambdaConstructor extends LambdaFunction {
         this.flags = CONSTRUCTOR_DEFAULT;
     }
 
+    protected Constructable getTargetConstructor() {
+        return targetConstructor;
+    }
+
     @Override
     public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
         if ((flags & CONSTRUCTOR_FUNCTION) == 0) {
@@ -106,6 +110,23 @@ public class LambdaConstructor extends LambdaFunction {
         LambdaFunction f = new LambdaFunction(scope, name, length, target);
         ScriptableObject proto = getPrototypeScriptable();
         proto.defineProperty(name, f, 0);
+    }
+
+    /**
+     * Define a function property on the prototype of the constructor using a LambdaFunction under
+     * the covers.
+     */
+    public void definePrototypeMethod(
+            Scriptable scope,
+            SymbolKey name,
+            int length,
+            Callable target,
+            int attributes,
+            int propertyAttributes) {
+        LambdaFunction f = new LambdaFunction(scope, "[" + name.getName() + "]", length, target);
+        f.setStandardPropertyAttributes(propertyAttributes);
+        ScriptableObject proto = getPrototypeScriptable();
+        proto.defineProperty(name, f, attributes);
     }
 
     /**
