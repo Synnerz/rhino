@@ -154,6 +154,11 @@ final class InterpretedFunction extends NativeFunction implements Script {
         return idata.argIsConst[index];
     }
 
+    @Override
+    public boolean isStrict() {
+        return idata.isStrict;
+    }
+
     boolean hasFunctionNamed(String name) {
         for (int f = 0; f < idata.getFunctionCount(); f++) {
             InterpreterData functionData = (InterpreterData) idata.getFunction(f);
