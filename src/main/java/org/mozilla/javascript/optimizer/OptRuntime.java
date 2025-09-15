@@ -9,8 +9,8 @@ import org.mozilla.javascript.*;
 import java.lang.ref.WeakReference;
 
 public final class OptRuntime extends ScriptRuntime {
-    public static final Double oneObj = Double.valueOf(1.0);
-    public static final Double minusOneObj = Double.valueOf(-1.0);
+    public static final Integer oneObj = Integer.valueOf(1);
+    public static final Integer minusOneObj = Integer.valueOf(-1);
 
     public static final LRUCache<NameIC> lruCache = new LRUCache<>(128);
     public static final LRUCache<PropertyIC> propCache = new LRUCache<>(128);
@@ -257,16 +257,7 @@ public final class OptRuntime extends ScriptRuntime {
     }
 
     public static Double wrapDouble(double num) {
-        if (num == 0.0) {
-            if (1 / num > 0) {
-                // +0.0
-                return zeroObj;
-            }
-        } else if (num == 1.0) {
-            return oneObj;
-        } else if (num == -1.0) {
-            return minusOneObj;
-        } else if (Double.isNaN(num)) {
+        if (Double.isNaN(num)) {
             return NaNobj;
         }
         return Double.valueOf(num);
